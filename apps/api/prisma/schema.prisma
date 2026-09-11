@@ -1,0 +1,153 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions", "multiSchema"]
+  // Vercel's serverless Node runtime; "native" keeps local/Docker (Windows/Debian) working too.
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
+}
+
+// All tables live in their own "attendance" Postgres schema — this project can
+// then share a single Postgres instance/project (e.g. one Supabase project used
+// by another client app) without colliding with that app's tables in `public`
+// (both wanted "audit_log", for instance). `extensions` is where Supabase's UI
+// installs the postgis extension by default when you enable it.
+//
+// url: the app's *runtime* connection — on serverless (many short-lived
+// connections) this should be Supabase's Transaction pooler (port 6543) with
+// `?pgbouncer=true` appended. directUrl: used only for `prisma migrate`, which
+// needs prepared statements the transaction pooler doesn't support — use the
+// Session pooler (port 5432) or a direct connection.
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  schemas    = ["attendance", "extensions"]
+  extensions = [postgis(schema: "extensions")]
+}
+
+enum Role {
+  worker
+  supervisor
+  admin
+
+  @@schema("attendance")
+}
+
+enum MarkType {
+  check_in
+  check_out
+
+  @@schema("attendance")
+}
+
+enum RecordStatus {
+  ok
+  flagged
+
+  @@schema("attendance")
+}
+
+enum ImageStatus {
+  stored
+  purged
+
+  @@schema("attendance")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  role         Role     @default(worker)
+  phone        String?
+  employeeCode String   @unique @map("employee_code")
+  passwordHash String   @map("password_hash")
+  assignedSite Site?    @relation(fields: [assignedSiteId], references: [id])
+  assignedSiteId String? @map("assigned_site_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  consentedAt  DateTime? @map("consented_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  attendanceRecords AttendanceRecord[] @relation("WorkerRecords")
+  reviewedRecords   AttendanceRecord[] @relation("ReviewedBy")
+  auditLogs         AuditLog[]
+
+  @@map("users")
+  @@schema("attendance")
+}
+
+model Site {
+  id                 String  @id @default(cuid())
+  name               String
+  address            String
+  geofenceCenterLat  Float   @map("geofence_center_lat")
+  geofenceCenterLng  Float   @map("geofence_center_lng")
+  geofenceRadiusM    Int     @map("geofence_radius_m")
+  isActive           Boolean @default(true) @map("is_active")
+
+  users             User[]
+  attendanceRecords AttendanceRecord[]
+
+  @@map("sites")
+  @@schema("attendance")
+}
+
+/// Permanent. The image binary referenced by imageObjectKey is deleted after
+/// IMAGE_RETENTION_DAYS; every column here is kept forever.
+model AttendanceRecord {
+  id              String       @id @default(cuid())
+  worker          User         @relation("WorkerRecords", fields: [workerId], references: [id])
+  workerId        String       @map("worker_id")
+  site            Site?        @relation(fields: [siteId], references: [id])
+  siteId          String?      @map("site_id")
+  markType        MarkType     @map("mark_type")
+  serverTimestamp DateTime     @map("server_timestamp")
+  deviceTimestamp DateTime     @map("device_timestamp")
+  latitude        Float
+  longitude       Float
+  gpsAccuracyM    Float        @map("gps_accuracy_m")
+  address         String?
+  withinGeofence  Boolean      @map("within_geofence")
+  status          RecordStatus @default(ok)
+  flagReasons     String[]     @map("flag_reasons")
+  imageObjectKey  String?      @map("image_object_key")
+  imageStatus     ImageStatus  @default(stored) @map("image_status")
+  manualNote      String?      @map("manual_note")
+  reviewedBy      User?        @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById    String?      @map("reviewed_by_id")
+  reviewedAt      DateTime?    @map("reviewed_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  @@index([workerId, serverTimestamp])
+  @@index([siteId, serverTimestamp])
+  @@index([status])
+  @@index([imageStatus, serverTimestamp])
+  @@map("attendance_records")
+  @@schema("attendance")
+}
+
+/// Permanent, append-only audit trail.
+model AuditLog {
+  id          String   @id @default(cuid())
+  actor       User?    @relation(fields: [actorId], references: [id])
+  actorId     String?  @map("actor_id")
+  action      String
+  targetType  String?  @map("target_type")
+  targetId    String?  @map("target_id")
+  detailsJson Json?    @map("details_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@map("audit_log")
+  @@schema("attendance")
+}
+
+model GeocodeCache {
+  id        String   @id @default(cuid())
+  latKey    Float    @map("lat_key")
+  lngKey    Float    @map("lng_key")
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([latKey, lngKey])
+  @@map("geocode_cache")
+  @@schema("attendance")
+}

@@ -1,0 +1,33 @@
+# Optional: local offline dev instead of cloud Neon/Supabase + R2.
+# Usage:
+#   docker compose up -d
+#   DATABASE_URL=postgresql://ams:ams@localhost:5432/ams
+#   R2_ENDPOINT=http://localhost:9000  R2_ACCESS_KEY_ID=minioadmin  R2_SECRET_ACCESS_KEY=minioadmin
+#   create the bucket once:  docker compose exec minio mc alias set local http://localhost:9000 minioadmin minioadmin && docker compose exec minio mc mb local/ams-attendance-images
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ams
+      POSTGRES_PASSWORD: ams
+      POSTGRES_DB: ams
+    ports:
+      - "5432:5432"
+    volumes:
+      - ams_db:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ams_minio:/data
+
+volumes:
+  ams_db:
+  ams_minio:
