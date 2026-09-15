@@ -35,11 +35,16 @@ git push -u origin main
 | Build/Install commands | leave default — `apps/api/vercel.json` already sets the build command (generates the Prisma client, runs migrations, seeds) |
 
 **Environment Variables** (Settings → Environment Variables, or during import) — add for
-**all environments** (Production, Preview, Development):
+**all environments** (Production, Preview, Development). If you already set these with
+`sslmode=require`, **update both to `sslmode=no-verify`** — that was the actual cause of the
+`P1001: Can't reach database server` build failure (Prisma's `require` does full certificate
+verification against Supabase's pooler and fails; `no-verify` still encrypts, it just skips that
+check). The database is now migrated and seeded for real, so the next deploy should succeed
+cleanly once these two values are corrected:
 
 ```
-DATABASE_URL          postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true
-DIRECT_URL             postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_URL          postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true
+DIRECT_URL             postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify
 JWT_SECRET             <a long random string>
 S3_ENDPOINT            https://<ref>.supabase.co/storage/v1/s3
 S3_REGION               <your Supabase project's region>

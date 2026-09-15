@@ -24,9 +24,11 @@ never bare `public.*`).
 1. Open the **other app's** Supabase project (dashboard → the project you already have).
 2. **Database → Extensions** → enable `postgis` if it isn't already (installs into the
    `extensions` schema, which the migration also expects).
-3. **Project Settings → Database → Connection string → "Session pooler" tab** (port 5432) →
-   that's your `DATABASE_URL`. The migration will create the `attendance` schema itself —
-   it does not touch anything already in `public`.
+3. **Project Settings → Database → Connection string** → grab both the "Transaction pooler"
+   (port 6543, → `DATABASE_URL`) and "Session pooler" (port 5432, → `DIRECT_URL`) strings, and
+   add `?sslmode=no-verify` (plus `&pgbouncer=true` on `DATABASE_URL`) — see A3 below for why.
+   The migration will create the `attendance` schema itself — it does not touch anything
+   already in `public`.
 4. **Storage → New bucket** → `ams-attendance-images` (a new bucket, separate from anything
    the other app stores) → keep it private.
 5. **Project Settings → Storage → S3 Connection** → note the endpoint and region, then
@@ -55,14 +57,19 @@ listed as a deliberate non-goal today, not a limitation.
 
 ## A3. Get the connection string
 
-**Project Settings** → **Database** → **Connection string** → click the **`Session pooler`** tab
-(port `5432` — this one works for migrations and doesn't need IPv6).
+**Project Settings** → **Database** → **Connection string**. You need both pooler modes —
+same host, two ports:
+```
+postgresql://postgres.abcdefghijklmnop:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres   <- "Transaction pooler" tab, DATABASE_URL
+postgresql://postgres.abcdefghijklmnop:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres   <- "Session pooler" tab, DIRECT_URL
+```
+Replace `[YOUR-PASSWORD]` with the password from step A1.
 
-It looks like:
-```
-postgresql://postgres.abcdefghijklmnop:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
-```
-Replace `[YOUR-PASSWORD]` with the password from step A1. That's your `DATABASE_URL`.
+**Add `?sslmode=no-verify` to both.** Prisma's `sslmode=require` does full certificate-chain
+verification (most Postgres tools treat `require` as "encrypt only"); against a Supabase pooler
+this can fail with a misleading `P1001: Can't reach database server` even though the host,
+port, and password are all correct. `no-verify` still encrypts the connection, it just skips
+that check.
 
 ## A4. Create the storage bucket
 
@@ -85,7 +92,8 @@ copy .env.example apps\api\.env
 
 Edit `apps\api\.env`:
 ```ini
-DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true"
+DIRECT_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify"
 
 # generate with:  node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 JWT_SECRET="<paste generated string>"
@@ -163,7 +171,9 @@ Open **https://localhost:5173**, accept the certificate warning, log in:
 
 | Symptom | Fix |
 |---|---|
-| `db:migrate` hangs / "can't reach database" | **Neon:** you copied the *pooled* string — recopy with pooling off. **Supabase:** use the **Session pooler** string (port 5432), not "Direct connection". |
+| `P1001: Can't reach database server` on Supabase, host/port/password all correct | Add `?sslmode=no-verify` to `DATABASE_URL`/`DIRECT_URL`. Prisma's `sslmode=require` does full certificate verification and can fail against a Supabase pooler with this exact misleading error; `no-verify` still encrypts, it just skips that check. Confirmed fix — hit this exact issue building this project. |
+| `db:migrate` hangs / "can't reach database" (other causes) | **Neon:** you copied the *pooled* string — recopy with pooling off. **Supabase:** make sure `DIRECT_URL` uses the **Session pooler** (port 5432), not "Direct connection". |
+| `database schema is not empty` / `P3005` on first `db:migrate` (Option C) | Expected the first time you share an existing Supabase project — Prisma sees the other app's tables in `public` and refuses to guess. Baseline it once: `npx prisma db execute --file prisma/migrations/0000_init/migration.sql --schema prisma/schema.prisma` then `npx prisma migrate resolve --applied 0000_init` (run both from `apps/api`). After that, `npm run db:migrate` behaves normally. |
 | `prepared statement already exists` on Supabase | You used the **Transaction pooler** (port 6543). Switch to **Session pooler** (5432). |
 | migrate: `type "geography" does not exist` | PostGIS not enabled — Supabase: Database → Extensions → enable `postgis`. Then re-run. |
 | Dashboard loads but panels are empty / 500 | API not running or `.env` wrong — check the `npm run dev` terminal. |
