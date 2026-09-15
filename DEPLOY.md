@@ -43,8 +43,8 @@ check). The database is now migrated and seeded for real, so the next deploy sho
 cleanly once these two values are corrected:
 
 ```
-DATABASE_URL          postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true
-DIRECT_URL             postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify
+DATABASE_URL          postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true&connect_timeout=10
+DIRECT_URL             postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify&connect_timeout=10
 JWT_SECRET             <a long random string>
 S3_ENDPOINT            https://<ref>.supabase.co/storage/v1/s3
 S3_REGION               <your Supabase project's region>
@@ -130,3 +130,10 @@ accounts, currently re-created on every deploy (see "Notes" below).
   here works on the free Hobby plan.
 - Local dev (`npm run dev`) and the Docker path (`docker-compose.full.yml`) still work
   exactly as before — this deploy path is additive, not a replacement.
+- **A request that just hangs with no response and nothing in the logs** (as opposed to a
+  fast error) means the DB connection stalled rather than failed — Vercel's own function
+  timeout silently kills it with no log line. Fixed by two things already in the repo:
+  `connect_timeout=10` on both connection strings (Prisma gives up with a clear error
+  instead of hanging forever) and `functions.api/index.ts.maxDuration: 30` in
+  `apps/api/vercel.json` (room to actually see that error instead of a silent platform
+  kill). If you still see silent hangs after both are in place, that's worth reporting back.

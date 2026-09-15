@@ -92,8 +92,8 @@ copy .env.example apps\api\.env
 
 Edit `apps\api\.env`:
 ```ini
-DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true"
-DIRECT_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify"
+DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify&pgbouncer=true&connect_timeout=10"
+DIRECT_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=no-verify&connect_timeout=10"
 
 # generate with:  node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 JWT_SECRET="<paste generated string>"
