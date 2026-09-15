@@ -17,7 +17,7 @@ import { configureApp } from '../src/bootstrap';
  */
 type ServerlessHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 
-let cachedHandler: ServerlessHandler | undefined;
+let cachedHandlerPromise: Promise<ServerlessHandler> | undefined;
 
 async function bootstrap(): Promise<ServerlessHandler> {
   const expressApp = express();
@@ -28,8 +28,23 @@ async function bootstrap(): Promise<ServerlessHandler> {
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  if (!cachedHandler) {
-    cachedHandler = await bootstrap();
+  try {
+    if (!cachedHandlerPromise) {
+      cachedHandlerPromise = bootstrap();
+    }
+    const cachedHandler = await cachedHandlerPromise;
+    return await cachedHandler(req, res);
+  } catch (err) {
+    // A failed cold start (bad env var, DB unreachable, wrong Prisma binary
+    // target, ...) must not leave the container permanently wedged on a
+    // rejected promise — clear it so the next invocation gets a clean retry.
+    cachedHandlerPromise = undefined;
+    // eslint-disable-next-line no-console
+    console.error('[api/index] request failed:', err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+    }
+    res.end(JSON.stringify({ error: 'Internal server error' }));
   }
-  return cachedHandler(req, res);
 }
