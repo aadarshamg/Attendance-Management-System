@@ -20,6 +20,8 @@ export interface AppConfig {
   imageRetentionDays: number;
   maxUploadBytes: number;
   signedUrlTtlSeconds: number;
+  /** Guards GET /internal/retention/purge (Vercel Cron). Undefined on non-serverless hosts, where the endpoint is simply unused. */
+  cronSecret?: string;
 }
 
 export function loadConfig(): AppConfig {
@@ -70,6 +72,7 @@ export function loadConfig(): AppConfig {
     imageRetentionDays: num('IMAGE_RETENTION_DAYS', 90),
     maxUploadBytes: num('MAX_UPLOAD_BYTES', 614400),
     signedUrlTtlSeconds: num('SIGNED_URL_TTL_SECONDS', 300),
+    cronSecret: process.env.CRON_SECRET || undefined,
   };
 }
 

@@ -22,7 +22,7 @@ export class RetentionController {
 
   @Get('purge')
   async purge(@Headers('authorization') authorization?: string) {
-    const secret = process.env.CRON_SECRET;
+    const secret = this.config.cronSecret;
     if (!secret || authorization !== `Bearer ${secret}`) {
       throw new UnauthorizedException();
     }
