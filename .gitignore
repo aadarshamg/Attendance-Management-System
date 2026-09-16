@@ -11,3 +11,5 @@ apps/*/.env.*
 .DS_Store
 *.tsbuildinfo
 apps/web/dev-dist/
+.vercel/
+apps/*/.vercel/
