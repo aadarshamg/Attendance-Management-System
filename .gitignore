@@ -13,3 +13,6 @@ apps/*/.env.*
 apps/web/dev-dist/
 .vercel/
 apps/*/.vercel/
+
+.vercel
+.env*
