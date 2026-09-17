@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthContext';
+import { api } from '../lib/api';
 
 const navItems = [
   { to: '/admin', end: true, label: 'Overview & records', icon: 'overview' },
@@ -19,6 +21,21 @@ export function AdminLayout() {
   const isAdmin = user?.role === 'admin';
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Real backend status, not a decorative claim — checked on load and every 30s.
+  const health = useQuery({
+    queryKey: ['health'],
+    queryFn: api.health,
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const isOnline = health.data?.status === 'ok' && health.data.db;
+  const statusLabel = health.isLoading ? 'Checking…' : isOnline ? 'All systems online' : 'Connection issue';
+  const statusDetail = health.data
+    ? `Checked ${new Date(health.data.timestamp).toLocaleTimeString()}`
+    : health.isError
+      ? 'Could not reach the API'
+      : '';
+
   return (
     <div className={`admin-shell ${menuOpen ? 'menu-open' : ''}`}>
       <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />
@@ -26,11 +43,6 @@ export function AdminLayout() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
           <span><strong>TrackFlow</strong><small>Workforce operations</small></span>
-        </div>
-        <div className="workspace-switcher">
-          <span className="workspace-icon">D</span>
-          <span><small>Current workspace</small><strong>Dwarka Region</strong></span>
-          <span className="chevron">⌄</span>
         </div>
         <nav className="side-nav" aria-label="Primary navigation">
           <p>Workspace</p>
@@ -42,8 +54,8 @@ export function AdminLayout() {
           ))}
         </nav>
         <div className="sidebar-note">
-          <span className="status-dot" />
-          <div><strong>All systems online</strong><small>Last sync just now</small></div>
+          <span className={`status-dot ${isOnline ? '' : 'offline'}`} />
+          <div><strong>{statusLabel}</strong><small>{statusDetail}</small></div>
         </div>
         <div className="sidebar-profile">
           <span className="avatar">{initials(user?.name)}</span>
@@ -56,11 +68,6 @@ export function AdminLayout() {
           <button className="icon-button menu-button" onClick={() => setMenuOpen((open) => !open)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
             <span /><span /><span />
           </button>
-          <div className="topbar-location"><span className="eyebrow">Live operations</span><strong>Dwarka Sector 62 Hub</strong></div>
-          <div className="topbar-actions">
-            <label className="global-search"><span aria-hidden="true" /><input aria-label="Search" placeholder="Search anything…" /><kbd>⌘ K</kbd></label>
-            <button className="icon-button notification-button" aria-label="Notifications"><span aria-hidden="true" /><i /></button>
-          </div>
         </header>
         <main className="admin-main"><Outlet /></main>
       </div>

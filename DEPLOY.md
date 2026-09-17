@@ -114,12 +114,12 @@ accounts, currently re-created on every deploy (see "Notes" below).
 
 ## Notes
 
-- **Every deploy re-runs migrate + seed.** `apps/api/vercel.json`'s `buildCommand` does
-  this on purpose — `prisma migrate deploy` and the seed script's `upsert`s are both
-  idempotent, so it's safe, and it's how new schema changes and the demo accounts reach
-  the database without needing a working local connection. Once real users replace the
-  seed accounts, drop `&& npm run db:seed` from that build command so deploys stop
-  recreating them.
+- **Every deploy re-runs migrate only, not seed.** `apps/api/vercel.json`'s `buildCommand`
+  used to also run `npm run db:seed` on every deploy — useful while there was no working
+  local connection, but it kept recreating the demo accounts forever. Now that real data
+  is in use, seeding only happens when you explicitly run `npm run db:seed` yourself. If
+  you ever need the demo accounts back (a fresh throwaway environment, testing), run that
+  manually or temporarily re-add `&& npm run db:seed` to the build command.
 - **Preview deployments** (every PR) run against the **same** database as Production right
   now, since there's only one `DATABASE_URL` configured. Fine for now; before this is a
   real production system, give Preview its own Supabase branch/project.

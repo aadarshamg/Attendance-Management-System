@@ -13,7 +13,7 @@ export class SitesService {
   async list(): Promise<SiteSummary[]> {
     const sites = await this.prisma.site.findMany({
       orderBy: { name: 'asc' },
-      include: { _count: { select: { users: true } } },
+      include: { _count: { select: { users: { where: { isActive: true } } } } },
     });
     return sites.map((s) => ({
       id: s.id,
@@ -73,10 +73,15 @@ export class SitesService {
 
   /** Sites are never hard-deleted (attendance records reference them) — deactivate instead. */
   async deactivate(actorId: string, id: string): Promise<SiteSummary> {
-    const site = await this.prisma.site.findUnique({ where: { id }, include: { _count: { select: { users: true } } } });
+    const site = await this.prisma.site.findUnique({
+      where: { id },
+      include: { _count: { select: { users: { where: { isActive: true } } } } },
+    });
     if (!site) throw new NotFoundException('Site not found');
     if (site._count.users > 0) {
-      throw new BadRequestException('Reassign the workers on this site before deactivating it');
+      throw new BadRequestException(
+        'Reassign or deactivate the active workers on this site before deactivating it',
+      );
     }
     const updated = await this.prisma.site.update({ where: { id }, data: { isActive: false } });
     await this.audit.record({ actorId, action: 'site.deactivate', targetType: 'site', targetId: id });

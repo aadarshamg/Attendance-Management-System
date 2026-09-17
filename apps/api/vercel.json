@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run db:generate && npm run db:migrate && npm run db:seed",
+  "buildCommand": "npm run db:generate && npm run db:migrate",
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
   "crons": [{ "path": "/internal/retention/purge", "schedule": "0 2 * * *" }],
   "functions": {

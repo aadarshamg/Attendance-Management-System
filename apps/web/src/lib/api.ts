@@ -61,6 +61,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  health: () =>
+    request<{ status: string; db: boolean; uptimeSeconds: number; timestamp: string }>('/health'),
+
   login: (employeeCode: string, password: string) =>
     request<LoginResponse>('/auth/login', {
       method: 'POST',
