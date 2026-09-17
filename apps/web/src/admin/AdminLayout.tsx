@@ -7,6 +7,7 @@ const navItems = [
   { to: '/admin/users', label: 'People', icon: 'people', adminOnly: true },
   { to: '/admin/sites', label: 'Sites & geofences', icon: 'sites', adminOnly: true },
   { to: '/admin/audit', label: 'Audit trail', icon: 'audit', adminOnly: true },
+  { to: '/admin/settings', label: 'Settings', icon: 'settings' },
 ];
 
 function initials(name?: string) {

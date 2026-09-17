@@ -17,6 +17,7 @@ const RecordDetailPage = lazy(() =>
 const UsersPage = lazy(() => import('./admin/UsersPage').then((m) => ({ default: m.UsersPage })));
 const SitesPage = lazy(() => import('./admin/SitesPage').then((m) => ({ default: m.SitesPage })));
 const AuditPage = lazy(() => import('./admin/AuditPage').then((m) => ({ default: m.AuditPage })));
+const SettingsPage = lazy(() => import('./admin/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
 const STAFF = ['admin', 'supervisor'] as const;
 
@@ -80,6 +81,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
