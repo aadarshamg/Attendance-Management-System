@@ -44,6 +44,10 @@ export function AdminLayout() {
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
           <span><strong>TrackFlow</strong><small>Workforce operations</small></span>
         </div>
+        <div className="sidebar-workspace">
+          <span className="workspace-initial">T</span>
+          <span><small>Current workspace</small><strong>Attendance management</strong></span>
+        </div>
         <nav className="side-nav" aria-label="Primary navigation">
           <p>Workspace</p>
           {navItems.filter((item) => !item.adminOnly || isAdmin).map((item) => (
