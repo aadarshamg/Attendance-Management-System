@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "postinstall": "npm run build --workspace @ams/shared && npm run db:generate --workspace @ams/api",
+    "postinstall": "npm run build --workspace @ams/shared",
     "dev": "npm run build --workspace @ams/shared && npm-run-all --parallel dev:shared dev:api dev:web",
     "dev:shared": "npm run dev --workspace @ams/shared",
     "dev:api": "npm run start:dev --workspace @ams/api",

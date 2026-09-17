@@ -8,11 +8,6 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    # postinstall runs `prisma generate`, which only needs these to be present
-    # (not reachable) to validate the schema — no live DB is used in CI.
-    env:
-      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-      DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,6 +16,17 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Generate Prisma client
+        # Only needs DATABASE_URL/DIRECT_URL to be *present* (not reachable) to
+        # validate the schema — no live DB is used in CI. Kept as its own step
+        # (not postinstall) so an unrelated workspace's install never depends
+        # on Prisma being generated — see the api/vercel.json Root Directory
+        # incident this fixes.
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/db"
+        run: npm run db:generate --workspace @ams/api
 
       - name: Typecheck + build (shared, api, web)
         run: npm run build
