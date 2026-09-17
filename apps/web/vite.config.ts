@@ -14,10 +14,11 @@ export default defineConfig({
       // App-shell precache only. Offline *capture* is out of scope for the MVP.
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
       manifest: {
-        name: 'Site Attendance',
-        short_name: 'Attendance',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        name: 'TrackFlow Workforce Attendance',
+        short_name: 'TrackFlow',
+        description: 'Workforce attendance and site operations, in sync.',
+        theme_color: '#101b2d',
+        background_color: '#101b2d',
         display: 'standalone',
         start_url: '/',
         icons: [

@@ -26,8 +26,9 @@ export function LoginPage() {
 
   return (
     <div className="card center-screen">
-      <h1>Site Attendance</h1>
-      <p className="muted">Sign in with your employee code.</p>
+      <span className="eyebrow">Workforce operations</span>
+      <h1>Welcome to TrackFlow</h1>
+      <p className="muted">Sign in to manage attendance, sites, and your workday.</p>
       <form onSubmit={onSubmit} className="stack">
         <label>
           Employee code
@@ -36,6 +37,7 @@ export function LoginPage() {
             onChange={(e) => setEmployeeCode(e.target.value)}
             autoCapitalize="characters"
             autoComplete="username"
+            placeholder="e.g. TF-2048"
             required
           />
         </label>
@@ -46,6 +48,7 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            placeholder="Enter your password"
             required
           />
         </label>
