@@ -41,7 +41,7 @@ export function AdminLayout() {
       <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />
       <aside className="admin-sidebar">
         <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+          <img src="/agua-logo-mark.png" alt="AGUA Engineers" className="brand-mark" />
           <span><strong>TrackFlow</strong><small>Workforce operations</small></span>
         </div>
         <div className="sidebar-workspace">

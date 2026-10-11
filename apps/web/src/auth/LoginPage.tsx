@@ -29,22 +29,16 @@ export function LoginPage() {
     <div className="login-shell">
       <aside className="login-brand-panel">
         <div className="login-product-lockup">
-          <span className="login-hero-mark" aria-hidden="true"><i /><i /><i /></span>
-          <h2>TrackFlow</h2>
-          <p>Workforce attendance, in sync.</p>
+          <img src="/agua-logo.png" alt="AGUA Engineers" className="login-hero-logo" />
         </div>
-        <span className="login-company-caption">TrackFlow Workforce Operations</span>
         <i className="login-ring login-ring-one" /><i className="login-ring login-ring-two" />
       </aside>
       <main className="login-form-panel">
         <div className="login-mobile-brand">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-          <strong>TrackFlow</strong>
+          <img src="/agua-logo-mark.png" alt="AGUA Engineers" />
         </div>
         <div className="login-form-wrap">
-          <span className="eyebrow">Workforce operations</span>
           <h1>Welcome back</h1>
-          <p className="muted">Sign in to continue to the TrackFlow attendance workspace.</p>
           <form onSubmit={onSubmit} className="login-form">
             <label>
               Employee code
