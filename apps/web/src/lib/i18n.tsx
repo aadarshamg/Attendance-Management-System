@@ -13,8 +13,8 @@ const en = {
 
   // Login
   'login.title': 'Welcome',
-  'login.workerTab': 'Worker',
-  'login.staffTab': 'Office staff',
+  'login.staffTitle': 'Office staff login',
+  'login.staffHelp': 'Need access? Contact your administrator.',
   'login.phone': 'Mobile number',
   'login.phonePlaceholder': '10-digit mobile number',
   'login.pin': '4-digit PIN',
@@ -116,8 +116,8 @@ const hi: Record<MessageKey, string> = {
   'lang.switchLabel': 'अंग्रेज़ी में बदलें',
 
   'login.title': 'स्वागत है',
-  'login.workerTab': 'मज़दूर',
-  'login.staffTab': 'ऑफ़िस स्टाफ़',
+  'login.staffTitle': 'ऑफ़िस स्टाफ़ लॉगिन',
+  'login.staffHelp': 'एक्सेस चाहिए? अपने एडमिन से संपर्क करें।',
   'login.phone': 'मोबाइल नंबर',
   'login.phonePlaceholder': '10 अंकों का मोबाइल नंबर',
   'login.pin': '4 अंकों का पिन',

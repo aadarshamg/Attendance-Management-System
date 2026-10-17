@@ -76,26 +76,27 @@ docker compose -f docker-compose.full.yml up --build
 ## Worker login (phone + PIN)
 
 Workers don't type codes or passwords. The admin adds each worker in **Admin → Users** with their
-**10-digit mobile number** and a **4-digit PIN**, and tells the worker the PIN. On the login screen the
-worker picks **Worker**, types the number and PIN on the number pad, and stays signed in on that phone
-for 90 days (`WORKER_JWT_TTL`).
+**10-digit mobile number** and a **4-digit PIN**, and tells the worker the PIN. The worker opens the
+app (`/login`), types the number and PIN on the number pad, and stays signed in on that phone for
+90 days (`WORKER_JWT_TTL`).
 
 - **Forgotten PIN** — the admin sets a new one from the Users page.
 - **5 wrong PINs** lock that worker's PIN login for 15 minutes; an admin PIN reset unlocks it at once.
 - **Lost phone / worker leaves** — reset the PIN or deactivate the worker: every signed-in phone is
   logged out on its next request.
-- Office staff (supervisor, admin) use the **Office staff** tab with employee code + password.
+- Office staff (supervisor, admin) have their own link, **`/staff`**, with employee code + password.
+  Workers never see it. Opening `/admin` while signed out also lands there.
 
 The worker screens (login, home, camera, history, consent) have an **English ⇄ हिंदी** switch;
 problems are shown in plain words with what to do (e.g. "📍 Location is off — turn on Location…").
 
 ## Verify end-to-end
 
-1. **Consent + capture** — on the **Worker** tab log in with `9000000001` / PIN `1234` → accept the consent
+1. **Consent + capture** — at `/login` log in with `9000000001` / PIN `1234` → accept the consent
    notice → **Start work** → allow camera + location → **Take photo** → **Done — Save** → the confirmation
    shows the server time; the home button now reads **End work**. The admin record shows the resolved
    address and geofence status, and the photo carries the burned-in watermark.
-2. **Supervisor** — log in as `SUP001` → sees only Tower-B records; opening a Metro record is rejected.
+2. **Supervisor** — at `/staff` log in as `SUP001` → sees only Tower-B records; opening a Metro record is rejected.
 3. **Review** — open a flagged record → set status to **OK**, add a note, **Save review** → the record
    shows "reviewed", and an `attendance.review` row appears in the audit log.
 4. **Admin CRUD** — as `ADMIN001`: create a site (click the map to set the geofence centre), create a

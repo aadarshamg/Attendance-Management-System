@@ -337,9 +337,6 @@ td small { display: block; margin-top: 3px; color: #919cad; font-size: .63rem; }
 /* ---------- Worker-facing screens: big targets, icons, colour over words ---------- */
 .lang-toggle { display: inline-flex; min-height: 44px; margin-left: auto; padding: 8px 14px; align-items: center; gap: 6px; border-radius: 999px; font-size: .95rem; }
 .login-topbar { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; }
-.login-tabs { display: grid; margin-bottom: 22px; padding: 4px; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 13px; background: #e9eef6; }
-.login-tabs button { min-height: 50px; border: 0; border-radius: 10px; background: transparent; color: #4b5872; font-size: .95rem; }
-.login-tabs button.active { background: #fff; color: #0c1f3e; box-shadow: var(--shadow-sm); }
 .login-form label > span { display: inline-flex; gap: 6px; align-items: center; }
 .login-form .login-big-input { min-height: 58px; font-size: 1.35rem; font-weight: 700; letter-spacing: .04em; }
 .login-form .pin-input { max-width: 200px; font-size: 1.8rem; letter-spacing: .5em; text-align: center; }

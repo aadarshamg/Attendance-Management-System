@@ -164,7 +164,7 @@ Open **https://localhost:5173**, accept the certificate warning, log in:
 |---|---|---|
 | `ADMIN001` | `password123` | the dashboard |
 | `W10482` | `password123` | worker check-in/out |
-| phone `9000000001` | PIN `1234` | worker check-in/out (Worker tab) |
+| phone `9000000001` | PIN `1234` | worker check-in/out (`/login`); staff use `/staff` |
 
 This covers local dev — none of the above needs `CRON_SECRET` (that's a Vercel-only
 setting for the retention cron endpoint; see `DEPLOY.md` when you get to deploying).

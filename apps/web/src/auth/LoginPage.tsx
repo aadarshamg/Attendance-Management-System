@@ -6,22 +6,14 @@ import { LanguageToggle, useI18n } from '../lib/i18n';
 import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
 import { ProblemCard } from '../components/ProblemCard';
 
-type Mode = 'worker' | 'staff';
-const MODE_KEY = 'ams.loginMode';
-
-function readMode(): Mode {
-  try {
-    return localStorage.getItem(MODE_KEY) === 'staff' ? 'staff' : 'worker';
-  } catch {
-    return 'worker';
-  }
-}
-
-export function LoginPage() {
+/**
+ * Two separate links: /login is phone + PIN for workers (they never see the staff form),
+ * /staff is employee code + password for supervisors and admins.
+ */
+export function LoginPage({ variant }: { variant: 'worker' | 'staff' }) {
   const { login, loginWithPin } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [mode, setModeState] = useState<Mode>(readMode);
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
@@ -30,20 +22,10 @@ export function LoginPage() {
   const [problem, setProblem] = useState<FriendlyError | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function setMode(next: Mode) {
-    setModeState(next);
-    setProblem(null);
-    try {
-      localStorage.setItem(MODE_KEY, next);
-    } catch {
-      /* ignore */
-    }
-  }
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
-    if (mode === 'worker') {
+    if (variant === 'worker') {
       if (!normalizePhone(phone)) {
         setProblem({ icon: '📱', title: 'err.badPhone', fix: 'err.badPhone.fix' });
         return;
@@ -56,13 +38,13 @@ export function LoginPage() {
     setBusy(true);
     try {
       const user =
-        mode === 'worker'
+        variant === 'worker'
           ? await loginWithPin(phone, pin)
           : await login(employeeCode.trim(), password);
       navigate(user.role === 'worker' ? '/' : '/admin', { replace: true });
     } catch (err) {
-      setProblem(toFriendlyError(err, mode === 'worker' ? 'pin' : 'password'));
-      if (mode === 'worker') setPin('');
+      setProblem(toFriendlyError(err, variant === 'worker' ? 'pin' : 'password'));
+      if (variant === 'worker') setPin('');
     } finally {
       setBusy(false);
     }
@@ -84,29 +66,9 @@ export function LoginPage() {
           <LanguageToggle />
         </div>
         <div className="login-form-wrap">
-          <h1>{t('login.title')}</h1>
-          <div className="login-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'worker'}
-              className={mode === 'worker' ? 'active' : ''}
-              onClick={() => setMode('worker')}
-            >
-              <span aria-hidden="true">👷</span> {t('login.workerTab')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'staff'}
-              className={mode === 'staff' ? 'active' : ''}
-              onClick={() => setMode('staff')}
-            >
-              <span aria-hidden="true">💼</span> {t('login.staffTab')}
-            </button>
-          </div>
+          <h1>{variant === 'worker' ? t('login.title') : t('login.staffTitle')}</h1>
           <form onSubmit={onSubmit} className="login-form">
-            {mode === 'worker' ? (
+            {variant === 'worker' ? (
               <>
                 <label>
                   <span><span aria-hidden="true">📱</span> {t('login.phone')}</span>
@@ -175,7 +137,7 @@ export function LoginPage() {
             </button>
           </form>
         </div>
-        {mode === 'worker' && <p className="login-help">{t('login.help')}</p>}
+        <p className="login-help">{variant === 'worker' ? t('login.help') : t('login.staffHelp')}</p>
       </main>
     </div>
   );
