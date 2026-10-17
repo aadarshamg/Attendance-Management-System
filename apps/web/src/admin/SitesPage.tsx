@@ -113,7 +113,7 @@ export function SitesPage() {
                   {s.geofenceCenterLat.toFixed(4)}, {s.geofenceCenterLng.toFixed(4)}
                 </td>
                 <td>{s.geofenceRadiusM} m</td>
-                <td>{s.workerCount ?? '—'}</td>
+                <td>{s.workerCount ?? '-'}</td>
                 <td>{s.isActive ? 'yes' : 'no'}</td>
                 <td className="row gap">
                   <button className="link" onClick={() => startEdit(s)}>

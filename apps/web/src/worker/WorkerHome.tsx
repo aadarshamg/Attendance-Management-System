@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { LanguageToggle, useI18n } from '../lib/i18n';
 import { StatusIcon } from '../components/StatusBadge';
+import { Icon } from '../components/Icon';
 
 /** A check-in older than this is treated as forgotten, so the next tap starts a new day. */
 const OPEN_SHIFT_MAX_HOURS = 16;
@@ -72,7 +73,7 @@ export function WorkerHome() {
           <h1>{t('home.hello', { name: user.name })}</h1>
           {user.assignedSiteName && (
             <p className="worker-site">
-              <span aria-hidden="true">📍</span> {user.assignedSiteName}
+              <Icon name="pin" size={18} /> {user.assignedSiteName}
             </p>
           )}
         </div>
@@ -83,40 +84,47 @@ export function WorkerHome() {
         onClick={() => navigate(`/capture?type=${next}`)}
         disabled={records.isLoading}
       >
-        <span className="mark-icon" aria-hidden="true">{next === 'check_in' ? '🏗️' : '🏠'}</span>
+        <span className="mark-icon">
+          <Icon name={next === 'check_in' ? 'hardhat' : 'home'} size={56} />
+        </span>
         <span className="mark-label">
           {next === 'check_in' ? t('home.startWork') : t('home.endWork')}
         </span>
         <span className="mark-sub">
-          <span aria-hidden="true">📷</span> {t('home.tapToMark')}
+          <Icon name="camera" size={20} /> {t('home.tapToMark')}
         </span>
       </button>
-      {doneToday && <p className="worker-note">✅ {t('home.doneToday')}</p>}
+      {doneToday && (
+        <p className="worker-note">
+          <Icon name="checkCircle" size={20} /> {t('home.doneToday')}
+        </p>
+      )}
 
       <section className="today-card">
         <h2>{t('home.today')}</h2>
         <div className="today-grid">
           <div className={`today-tile ${firstIn ? 'filled' : ''}`}>
-            <span className="today-icon" aria-hidden="true">🏗️</span>
+            <span className="today-icon is-in"><Icon name="hardhat" size={22} /></span>
             <span className="today-label">{t('home.in')}</span>
             <strong>{time(firstIn)}</strong>
-            {firstIn && <StatusIcon status={firstIn.status} />}
+            {firstIn && <StatusIcon />}
           </div>
           <div className={`today-tile ${lastOut ? 'filled' : ''}`}>
-            <span className="today-icon" aria-hidden="true">🏠</span>
+            <span className="today-icon is-out"><Icon name="home" size={22} /></span>
             <span className="today-label">{t('home.out')}</span>
             <strong>{time(lastOut)}</strong>
-            {lastOut && <StatusIcon status={lastOut.status} />}
+            {lastOut && <StatusIcon />}
           </div>
         </div>
       </section>
 
       <nav className="worker-links">
         <Link to="/history" className="worker-link">
-          <span aria-hidden="true">📋</span> {t('home.history')}
+          <Icon name="list" size={22} /> {t('home.history')}
+          <Icon name="arrowRight" size={18} className="worker-link-arrow" />
         </Link>
         <button type="button" className="worker-link quiet" onClick={onLogout}>
-          <span aria-hidden="true">🚪</span> {t('home.logout')}
+          <Icon name="logout" size={20} /> {t('home.logout')}
         </button>
       </nav>
     </div>

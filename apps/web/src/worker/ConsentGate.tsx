@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { LanguageToggle, useI18n } from '../lib/i18n';
 import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
 import { ProblemCard } from '../components/ProblemCard';
+import { Icon } from '../components/Icon';
 
 /**
  * DPDP Act 2023 (§11.1): capture plain-language consent before the first mark.
@@ -37,11 +38,15 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
         <LanguageToggle />
       </header>
       <h1>{t('consent.title')}</h1>
-      <div className="consent-icons" aria-hidden="true">📷 📍 🕒</div>
+      <div className="consent-icons">
+        <span><Icon name="camera" size={26} /></span>
+        <span><Icon name="pin" size={26} /></span>
+        <span><Icon name="shield" size={26} /></span>
+      </div>
       <p className="consent-text">{t('consent.body')}</p>
       {problem && <ProblemCard problem={problem} />}
       <button className="confirm-button" onClick={agree} disabled={busy}>
-        <span aria-hidden="true">✅</span> {busy ? t('consent.saving') : t('consent.agree')}
+        <Icon name="check" size={22} /> {busy ? t('consent.saving') : t('consent.agree')}
       </button>
       <button className="worker-link quiet" onClick={logout}>
         {t('consent.later')}

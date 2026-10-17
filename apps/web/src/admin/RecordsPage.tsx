@@ -1,122 +1,329 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { RecordStatus } from '@ams/shared';
+import type { AttendanceRecord, UserSummary } from '@ams/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { StatusBadge } from '../components/StatusBadge';
+import { Icon } from '../components/Icon';
 
-interface Filters {
+type Show = 'all' | 'on_site' | 'checked_out' | 'absent';
+
+/** One worker's day: first check-in and last check-out. */
+interface DayRow {
   workerId: string;
-  siteId: string;
-  status: '' | RecordStatus;
-  dateFrom: string;
-  dateTo: string;
-  page: number;
+  name: string;
+  code: string;
+  siteName: string | null;
+  checkIn: AttendanceRecord | null;
+  checkOut: AttendanceRecord | null;
 }
 
-const EMPTY: Filters = { workerId: '', siteId: '', status: '', dateFrom: '', dateTo: '', page: 1 };
+const PAGE_LIMIT = 200;
 
-function toParams(f: Filters): URLSearchParams {
+/** yyyy-mm-dd in the viewer's local time zone (what <input type="date"> uses). */
+function localDay(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function shiftDay(day: string, by: number): string {
+  const d = new Date(`${day}T00:00:00`);
+  d.setDate(d.getDate() + by);
+  return localDay(d);
+}
+
+function dayParams(day: string, siteId: string): URLSearchParams {
   const p = new URLSearchParams();
-  if (f.workerId) p.set('workerId', f.workerId);
-  if (f.siteId) p.set('siteId', f.siteId);
-  if (f.status) p.set('status', f.status);
-  if (f.dateFrom) p.set('dateFrom', new Date(f.dateFrom).toISOString());
-  if (f.dateTo) p.set('dateTo', new Date(f.dateTo + 'T23:59:59').toISOString());
-  p.set('page', String(f.page));
-  p.set('limit', '25');
+  p.set('dateFrom', new Date(`${day}T00:00:00`).toISOString());
+  p.set('dateTo', new Date(`${day}T23:59:59.999`).toISOString());
+  if (siteId) p.set('siteId', siteId);
   return p;
 }
 
-const formatTime = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const formatDay = (value: string) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' });
+/** The register needs the whole day, not one page, so read every page for it. */
+async function fetchWholeDay(base: URLSearchParams): Promise<AttendanceRecord[]> {
+  const all: AttendanceRecord[] = [];
+  for (let page = 1; ; page++) {
+    const p = new URLSearchParams(base);
+    p.set('page', String(page));
+    p.set('limit', String(PAGE_LIMIT));
+    const res = await api.adminRecords(p);
+    all.push(...res.data);
+    if (all.length >= res.total || res.data.length === 0) return all;
+  }
+}
+
+function groupByWorker(records: AttendanceRecord[]): DayRow[] {
+  const rows = new Map<string, DayRow>();
+  for (const r of records) {
+    const row =
+      rows.get(r.workerId) ??
+      { workerId: r.workerId, name: r.workerName, code: r.employeeCode, siteName: r.siteName, checkIn: null, checkOut: null };
+    const t = new Date(r.serverTimestamp).getTime();
+    if (r.markType === 'check_in' && (!row.checkIn || t < new Date(row.checkIn.serverTimestamp).getTime())) {
+      row.checkIn = r;
+    }
+    if (r.markType === 'check_out' && (!row.checkOut || t > new Date(row.checkOut.serverTimestamp).getTime())) {
+      row.checkOut = r;
+    }
+    rows.set(r.workerId, row);
+  }
+  return [...rows.values()];
+}
+
+const formatTime = (r: AttendanceRecord | null) =>
+  r ? new Date(r.serverTimestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+
+function hoursWorked(row: DayRow): string | null {
+  if (!row.checkIn || !row.checkOut) return null;
+  const mins = Math.round(
+    (new Date(row.checkOut.serverTimestamp).getTime() - new Date(row.checkIn.serverTimestamp).getTime()) / 60000,
+  );
+  if (mins <= 0) return null;
+  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
+}
+
+function rowState(row: DayRow): Exclude<Show, 'all'> {
+  if (!row.checkIn && !row.checkOut) return 'absent';
+  return row.checkOut ? 'checked_out' : 'on_site';
+}
+
+const STATE_LABEL: Record<Exclude<Show, 'all'>, string> = {
+  on_site: 'On site',
+  checked_out: 'Checked out',
+  absent: 'Absent',
+};
 
 export function RecordsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [filters, setFilters] = useState<Filters>(EMPTY);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const params = useMemo(() => toParams(filters), [filters]);
+  const today = localDay(new Date());
+  const [day, setDay] = useState(today);
+  const [siteId, setSiteId] = useState('');
+  const [search, setSearch] = useState('');
+  const [show, setShow] = useState<Show>('all');
+  const params = useMemo(() => dayParams(day, siteId), [day, siteId]);
 
-  const sites = useQuery({ queryKey: ['sites'], queryFn: api.sites });
+  const sites = useQuery({ queryKey: ['sites'], queryFn: api.sites, enabled: isAdmin });
   const users = useQuery({ queryKey: ['users'], queryFn: api.users, enabled: isAdmin });
-  const records = useQuery({ queryKey: ['admin-records', params.toString()], queryFn: () => api.adminRecords(params) });
+  const records = useQuery({
+    queryKey: ['admin-records', 'day', params.toString()],
+    queryFn: () => fetchWholeDay(params),
+    refetchInterval: day === today ? 60_000 : false,
+  });
 
-  const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, page: 1, ...patch }));
-  const totalPages = records.data ? Math.max(1, Math.ceil(records.data.total / records.data.limit)) : 1;
-  const visibleRecords = records.data?.data ?? [];
-  const verified = visibleRecords.filter((record) => record.status === 'ok').length;
-  const flagged = visibleRecords.filter((record) => record.status === 'flagged').length;
-  const activeSites = sites.data?.filter((site) => site.isActive).length ?? 0;
-  const activeFilterCount = [filters.workerId, filters.siteId, filters.status, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  const rows = useMemo(() => {
+    const present = groupByWorker(records.data ?? []);
+    // Admins also see who has not marked attendance at all that day.
+    const seen = new Set(present.map((r) => r.workerId));
+    const siteName = (sites.data ?? []).find((s) => s.id === siteId)?.name ?? null;
+    const absent: DayRow[] = (users.data ?? [])
+      .filter((u: UserSummary) => u.role === 'worker' && u.isActive && !seen.has(u.id))
+      .filter((u) => !siteId || u.assignedSiteId === siteId)
+      .map((u) => ({
+        workerId: u.id,
+        name: u.name,
+        code: u.employeeCode,
+        siteName: u.assignedSiteName ?? siteName,
+        checkIn: null,
+        checkOut: null,
+      }));
+    return [...present, ...absent].sort((a, b) => a.name.localeCompare(b.name));
+  }, [records.data, users.data, sites.data, siteId]);
+
+  const counts = useMemo(() => {
+    const c = { on_site: 0, checked_out: 0, absent: 0 };
+    for (const r of rows) c[rowState(r)]++;
+    return c;
+  }, [rows]);
+
+  const q = search.trim().toLowerCase();
+  const visible = rows.filter(
+    (r) =>
+      (show === 'all' || rowState(r) === show) &&
+      (!q || r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q)),
+  );
 
   const download = (format: 'csv' | 'xlsx') => {
-    const file = format === 'csv' ? 'attendance.csv' : 'attendance.xls';
+    const file = `attendance-${day}.${format === 'csv' ? 'csv' : 'xls'}`;
     api.download(api.exportUrl(params, format), file).catch((error) => alert(error.message));
   };
+
+  const present = counts.on_site + counts.checked_out;
+  const dayLabel = new Date(`${day}T00:00:00`).toLocaleDateString([], {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
   return (
     <div className="dashboard-page">
       <section className="page-heading">
         <div>
-          <h1>Attendance overview</h1>
+          <h1>Attendance</h1>
+          <p>{day === today ? `Today, ${dayLabel}` : dayLabel}</p>
         </div>
         <div className="heading-actions">
-          <div className="date-chip"><span className="calendar-glyph" aria-hidden="true" /><span><small>Reporting date</small><strong>{new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</strong></span></div>
-          <button className="primary action-button" onClick={() => download('xlsx')}><span className="download-glyph" aria-hidden="true" /> Export report</button>
+          <div className="day-picker">
+            <button aria-label="Previous day" onClick={() => setDay((d) => shiftDay(d, -1))}>
+              <Icon name="arrowLeft" size={16} />
+            </button>
+            <input
+              type="date"
+              value={day}
+              max={today}
+              onChange={(e) => e.target.value && setDay(e.target.value)}
+              aria-label="Date"
+            />
+            <button
+              aria-label="Next day"
+              disabled={day >= today}
+              onClick={() => setDay((d) => shiftDay(d, 1))}
+            >
+              <Icon name="arrowRight" size={16} />
+            </button>
+          </div>
+          {day !== today && (
+            <button className="secondary-button" onClick={() => setDay(today)}>
+              Today
+            </button>
+          )}
+          <button className="primary action-button" onClick={() => download('xlsx')}>
+            <span className="download-glyph" aria-hidden="true" /> Export Excel
+          </button>
         </div>
       </section>
 
       <section className="metric-grid" aria-label="Attendance summary">
-        <article className="metric-card metric-primary"><div className="metric-top"><span className="metric-icon metric-icon-people" /><span className="trend positive">Live</span></div><p>Total records</p><strong>{records.data?.total ?? '—'}</strong><small>Across all reporting sites</small></article>
-        <article className="metric-card"><div className="metric-top"><span className="metric-icon metric-icon-check" /><span className="trend positive">Verified</span></div><p>Clear entries</p><strong>{records.isLoading ? '—' : verified}</strong><small>On this page of results</small></article>
-        <article className="metric-card"><div className="metric-top"><span className="metric-icon metric-icon-flag" /><span className={`trend ${flagged ? 'warning' : 'positive'}`}>{flagged ? 'Review' : 'Clear'}</span></div><p>Needs attention</p><strong>{records.isLoading ? '—' : flagged}</strong><small>Flagged attendance entries</small></article>
-        <article className="metric-card"><div className="metric-top"><span className="metric-icon metric-icon-site" /><span className="trend neutral">Active</span></div><p>Operational sites</p><strong>{sites.isLoading ? '—' : activeSites}</strong><small>Accepting attendance today</small></article>
+        <SummaryCard label="Present" value={present} hint="Marked attendance" tone="ok" onClick={() => setShow('all')} active={show === 'all'} />
+        <SummaryCard label="On site now" value={counts.on_site} hint="Checked in, not out yet" tone="primary" onClick={() => setShow('on_site')} active={show === 'on_site'} />
+        <SummaryCard label="Checked out" value={counts.checked_out} hint="Finished for the day" tone="neutral" onClick={() => setShow('checked_out')} active={show === 'checked_out'} />
+        {isAdmin && (
+          <SummaryCard label="Absent" value={counts.absent} hint="No attendance marked" tone="warn" onClick={() => setShow('absent')} active={show === 'absent'} />
+        )}
       </section>
 
       <section className="records-panel">
-        <div className="panel-header">
-          <div><div className="panel-title-row"><h2>Attendance stream</h2><span className="live-pill"><i /> Live sync</span></div><p>Latest check-ins and check-outs from active work sites.</p></div>
-          <div className="panel-tools">
-            <button className={`filter-toggle ${filtersOpen ? 'active' : ''}`} onClick={() => setFiltersOpen((open) => !open)}><span className="filter-glyph" /> Filters {activeFilterCount > 0 && <b>{activeFilterCount}</b>}</button>
-            <button className="secondary-button" onClick={() => download('csv')}>Download CSV</button>
+        <div className="register-toolbar">
+          <label className="search-box">
+            <Icon name="user" size={18} />
+            <input
+              type="search"
+              placeholder="Search by name or employee code"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          {isAdmin && (
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label="Site">
+              <option value="">All sites</option>
+              {(sites.data ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="show-tabs" role="tablist">
+            {(['all', 'on_site', 'checked_out', ...(isAdmin ? (['absent'] as const) : [])] as Show[]).map((s) => (
+              <button key={s} role="tab" aria-selected={show === s} className={show === s ? 'active' : ''} onClick={() => setShow(s)}>
+                {s === 'all' ? 'Everyone' : STATE_LABEL[s]}
+              </button>
+            ))}
           </div>
+          <button className="secondary-button" onClick={() => download('csv')}>
+            Download CSV
+          </button>
         </div>
-
-        {filtersOpen && (
-          <div className="filters records-filters">
-            {isAdmin && <label>Worker<select value={filters.workerId} onChange={(e) => set({ workerId: e.target.value })}><option value="">All workers</option>{(users.data ?? []).filter((u) => u.role === 'worker').map((u) => <option key={u.id} value={u.id}>{u.name} ({u.employeeCode})</option>)}</select></label>}
-            {isAdmin && <label>Site<select value={filters.siteId} onChange={(e) => set({ siteId: e.target.value })}><option value="">All sites</option>{(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
-            <label>Status<select value={filters.status} onChange={(e) => set({ status: e.target.value as Filters['status'] })}><option value="">Any status</option><option value="ok">Verified</option><option value="flagged">Flagged</option></select></label>
-            <label>From<input type="date" value={filters.dateFrom} onChange={(e) => set({ dateFrom: e.target.value })} /></label>
-            <label>To<input type="date" value={filters.dateTo} onChange={(e) => set({ dateTo: e.target.value })} /></label>
-            <button className="text-button reset-button" onClick={() => setFilters(EMPTY)}>Clear filters</button>
-          </div>
-        )}
 
         <div className="table-wrap records-table-wrap">
-          <table className="records-table">
-            <thead><tr><th>Employee</th><th>Site & location</th><th>Entry time</th><th>Type</th><th>GPS</th><th>Status</th><th aria-label="Actions" /></tr></thead>
-            <tbody>{visibleRecords.map((record) => (
-              <tr key={record.id}>
-                <td><div className="employee-cell"><span className="employee-avatar">{record.workerName.slice(0, 1).toUpperCase()}</span><span><strong>{record.workerName}</strong><small>{record.employeeCode}</small></span></div></td>
-                <td><strong className="cell-primary">{record.siteName ?? 'Unassigned site'}</strong><small>{record.withinGeofence ? 'Inside geofence' : 'Outside geofence'}</small></td>
-                <td><strong className="cell-primary">{formatTime(record.serverTimestamp)}</strong><small>{formatDay(record.serverTimestamp)}</small></td>
-                <td><span className={`mark-type ${record.markType}`}>{record.markType === 'check_in' ? 'Check in' : 'Check out'}</span></td>
-                <td><strong className="cell-primary">±{Math.round(record.gpsAccuracyM)} m</strong><small>{record.imageStatus}</small></td>
-                <td><StatusBadge status={record.status} reviewed={Boolean(record.reviewedAt)} /></td>
-                <td><Link to={`/admin/records/${record.id}`} className="row-action" aria-label={`Open ${record.workerName}'s record`}>→</Link></td>
+          <table className="records-table register-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Site</th>
+                <th>In</th>
+                <th>Out</th>
+                <th>Hours</th>
+                <th>Status</th>
               </tr>
-            ))}</tbody>
+            </thead>
+            <tbody>
+              {visible.map((row) => {
+                const state = rowState(row);
+                return (
+                  <tr key={row.workerId}>
+                    <td>
+                      <div className="employee-cell">
+                        <span className="employee-avatar">{row.name.slice(0, 1).toUpperCase()}</span>
+                        <span>
+                          <strong>{row.name}</strong>
+                          <small>{row.code}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="cell-primary">{row.siteName ?? '-'}</td>
+                    <td><TimeCell record={row.checkIn} /></td>
+                    <td><TimeCell record={row.checkOut} /></td>
+                    <td className="cell-primary">{hoursWorked(row) ?? '-'}</td>
+                    <td><span className={`day-state ${state}`}>{STATE_LABEL[state]}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
-          {records.isLoading && <div className="table-message">Loading attendance records…</div>}
-          {records.isError && <div className="table-message error">Could not load attendance records.</div>}
-          {!records.isLoading && !records.isError && visibleRecords.length === 0 && <div className="empty-state"><span className="empty-icon" /><h3>No records found</h3><p>Try adjusting the filters or selecting a different date range.</p></div>}
+          {records.isLoading && <div className="table-message">Loading attendance…</div>}
+          {records.isError && <div className="table-message error">Could not load attendance.</div>}
+          {!records.isLoading && !records.isError && visible.length === 0 && (
+            <div className="empty-state">
+              <span className="empty-icon" />
+              <h3>{q ? 'No one matches your search' : 'No attendance for this day'}</h3>
+              <p>{q ? 'Check the spelling or clear the search.' : 'Pick another date or site.'}</p>
+            </div>
+          )}
         </div>
 
-        <div className="pagination-bar"><span>Showing page <strong>{filters.page}</strong> of <strong>{totalPages}</strong> · {records.data?.total ?? 0} records</span><div><button disabled={filters.page <= 1} onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}>←</button><button disabled={filters.page >= totalPages} onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}>→</button></div></div>
+        <div className="pagination-bar">
+          <span>
+            Showing <strong>{visible.length}</strong> of <strong>{rows.length}</strong> people
+          </span>
+        </div>
       </section>
     </div>
+  );
+}
+
+/** Time of a mark, linking to its photo, map and details. */
+function TimeCell({ record }: { record: AttendanceRecord | null }) {
+  if (!record) return <span className="muted">-</span>;
+  return (
+    <Link to={`/admin/records/${record.id}`} className="time-link" title="Open photo and location">
+      {formatTime(record)}
+      <Icon name="camera" size={15} />
+    </Link>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  hint,
+  tone,
+  onClick,
+  active,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  tone: 'ok' | 'primary' | 'neutral' | 'warn';
+  onClick: () => void;
+  active: boolean;
+}) {
+  return (
+    <button type="button" className={`summary-card tone-${tone} ${active ? 'active' : ''}`} onClick={onClick}>
+      <span className="summary-label">{label}</span>
+      <strong>{value}</strong>
+      <small>{hint}</small>
+    </button>
   );
 }

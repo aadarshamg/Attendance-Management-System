@@ -1,4 +1,5 @@
 import { CONSENT_NOTICE } from '@ams/shared';
+import { Icon } from '../components/Icon';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /** Worker-facing screens are English by default with a one-tap switch to Hindi. Admin stays English. */
@@ -14,14 +15,18 @@ const en = {
   // Login
   'login.title': 'Welcome',
   'login.staffTitle': 'Office staff login',
+  'login.workerRole': 'Worker',
+  'login.staffRole': 'Supervisor & admin',
+  'login.workerSubtitle': 'Log in with your mobile number and 4-digit PIN.',
+  'login.staffSubtitle': 'Sign in to the attendance dashboard.',
   'login.staffHelp': 'Need access? Contact your administrator.',
   'login.phone': 'Mobile number',
   'login.phonePlaceholder': '10-digit mobile number',
   'login.pin': '4-digit PIN',
   'login.submit': 'Login',
   'login.busy': 'Logging in…',
-  'login.employeeCode': 'Employee code',
-  'login.employeeCodePlaceholder': 'Enter employee code',
+  'login.employeeCode': 'Login ID',
+  'login.employeeCodePlaceholder': 'Employee code or email',
   'login.password': 'Password',
   'login.passwordPlaceholder': 'Enter your password',
   'login.show': 'Show',
@@ -36,7 +41,7 @@ const en = {
   'home.today': 'Today',
   'home.in': 'In',
   'home.out': 'Out',
-  'home.notYet': '—',
+  'home.notYet': '-',
   'home.history': 'My attendance',
   'home.logout': 'Log out',
   'home.logoutConfirm': 'Log out from this phone?',
@@ -49,7 +54,7 @@ const en = {
   'capture.takePhoto': 'Take photo',
   'capture.working': 'Please wait…',
   'capture.retake': 'Retake',
-  'capture.submit': 'Done — Save',
+  'capture.submit': 'Save attendance',
   'capture.saving': 'Saving…',
   'capture.back': 'Back',
   'capture.tryAgain': 'Try again',
@@ -58,7 +63,6 @@ const en = {
   'done.in': 'Work started',
   'done.out': 'Work ended',
   'done.savedAt': 'Saved at {time}',
-  'done.check': 'Your supervisor will check this entry.',
   'done.home': 'OK',
 
   // History
@@ -66,27 +70,26 @@ const en = {
   'history.empty': 'No attendance yet.',
   'history.loading': 'Loading…',
   'history.back': 'Back',
-  'status.ok': 'OK',
-  'status.flagged': 'Supervisor will check',
+  'status.ok': 'Saved',
 
   // Consent
   'consent.title': 'Before you start',
   'consent.body': CONSENT_NOTICE,
   'consent.agree': 'I agree',
   'consent.saving': 'Saving…',
-  'consent.later': 'Not now — log out',
+  'consent.later': 'Not now, log out',
 
   // Errors: a title saying what went wrong, and what to do about it.
   'err.cameraDenied': 'Camera is blocked',
   'err.cameraDenied.fix':
-    'Tap the 🔒 lock next to the web address → Camera → Allow. Then press "Try again".',
+    'Tap the lock icon next to the web address → Camera → Allow. Then press "Try again".',
   'err.cameraMissing': 'Camera not found',
   'err.cameraMissing.fix': 'Use a phone with a front camera, or ask your supervisor for help.',
   'err.cameraBusy': 'Camera is in use',
   'err.cameraBusy.fix': 'Close other apps that use the camera (video call, camera app), then try again.',
   'err.locationDenied': 'Location is off',
   'err.locationDenied.fix':
-    'Turn on Location from the top of your phone screen. Then tap the 🔒 lock → Location → Allow.',
+    'Turn on Location from the top of your phone screen. Then tap the lock icon → Location → Allow.',
   'err.locationWeak': 'Cannot find your location',
   'err.locationWeak.fix': 'Go to an open area, away from walls and roofs. Wait a little, then try again.',
   'err.network': 'No internet',
@@ -117,14 +120,18 @@ const hi: Record<MessageKey, string> = {
 
   'login.title': 'स्वागत है',
   'login.staffTitle': 'ऑफ़िस स्टाफ़ लॉगिन',
+  'login.workerRole': 'मज़दूर',
+  'login.staffRole': 'सुपरवाइज़र और एडमिन',
+  'login.workerSubtitle': 'अपने मोबाइल नंबर और 4 अंकों के पिन से लॉगिन करें।',
+  'login.staffSubtitle': 'अटेंडेंस डैशबोर्ड में साइन इन करें।',
   'login.staffHelp': 'एक्सेस चाहिए? अपने एडमिन से संपर्क करें।',
   'login.phone': 'मोबाइल नंबर',
   'login.phonePlaceholder': '10 अंकों का मोबाइल नंबर',
   'login.pin': '4 अंकों का पिन',
   'login.submit': 'लॉगिन करें',
   'login.busy': 'लॉगिन हो रहा है…',
-  'login.employeeCode': 'कर्मचारी कोड',
-  'login.employeeCodePlaceholder': 'कर्मचारी कोड डालें',
+  'login.employeeCode': 'लॉगिन आईडी',
+  'login.employeeCodePlaceholder': 'कर्मचारी कोड या ईमेल',
   'login.password': 'पासवर्ड',
   'login.passwordPlaceholder': 'पासवर्ड डालें',
   'login.show': 'दिखाएँ',
@@ -138,7 +145,7 @@ const hi: Record<MessageKey, string> = {
   'home.today': 'आज',
   'home.in': 'आए',
   'home.out': 'गए',
-  'home.notYet': '—',
+  'home.notYet': '-',
   'home.history': 'मेरी हाज़िरी',
   'home.logout': 'लॉग आउट',
   'home.logoutConfirm': 'इस फ़ोन से लॉग आउट करें?',
@@ -150,7 +157,7 @@ const hi: Record<MessageKey, string> = {
   'capture.takePhoto': 'फ़ोटो लें',
   'capture.working': 'कृपया रुकें…',
   'capture.retake': 'फिर से लें',
-  'capture.submit': 'ठीक है — सेव करें',
+  'capture.submit': 'हाज़िरी सेव करें',
   'capture.saving': 'सेव हो रहा है…',
   'capture.back': 'वापस',
   'capture.tryAgain': 'फिर कोशिश करें',
@@ -158,15 +165,13 @@ const hi: Record<MessageKey, string> = {
   'done.in': 'काम शुरू हो गया',
   'done.out': 'काम ख़त्म हो गया',
   'done.savedAt': '{time} पर सेव हुआ',
-  'done.check': 'आपका सुपरवाइज़र इसे जाँचेगा।',
   'done.home': 'ठीक है',
 
   'history.title': 'मेरी हाज़िरी',
   'history.empty': 'अभी कोई हाज़िरी नहीं।',
   'history.loading': 'लोड हो रहा है…',
   'history.back': 'वापस',
-  'status.ok': 'ठीक',
-  'status.flagged': 'सुपरवाइज़र जाँचेगा',
+  'status.ok': 'सेव हुआ',
 
   'consent.title': 'शुरू करने से पहले',
   'consent.body':
@@ -176,18 +181,18 @@ const hi: Record<MessageKey, string> = {
     'कोई भी समस्या हो तो अपने साइट सुपरवाइज़र से बात करें।',
   'consent.agree': 'मैं सहमत हूँ',
   'consent.saving': 'सेव हो रहा है…',
-  'consent.later': 'अभी नहीं — लॉग आउट',
+  'consent.later': 'अभी नहीं, लॉग आउट',
 
   'err.cameraDenied': 'कैमरा बंद है',
   'err.cameraDenied.fix':
-    'वेब पते के पास 🔒 ताले पर दबाएँ → Camera → Allow। फिर "फिर कोशिश करें" दबाएँ।',
+    'वेब पते के पास ताले वाले निशान पर दबाएँ → Camera → Allow। फिर "फिर कोशिश करें" दबाएँ।',
   'err.cameraMissing': 'कैमरा नहीं मिला',
   'err.cameraMissing.fix': 'आगे वाले कैमरे वाला फ़ोन इस्तेमाल करें, या सुपरवाइज़र से मदद लें।',
   'err.cameraBusy': 'कैमरा किसी और ऐप में चल रहा है',
   'err.cameraBusy.fix': 'कैमरा इस्तेमाल करने वाले दूसरे ऐप (वीडियो कॉल, कैमरा) बंद करें, फिर कोशिश करें।',
   'err.locationDenied': 'लोकेशन बंद है',
   'err.locationDenied.fix':
-    'फ़ोन की स्क्रीन के ऊपर से Location चालू करें। फिर 🔒 ताले पर दबाएँ → Location → Allow।',
+    'फ़ोन की स्क्रीन के ऊपर से Location चालू करें। फिर ताले वाले निशान पर दबाएँ → Location → Allow।',
   'err.locationWeak': 'आपकी लोकेशन नहीं मिल रही',
   'err.locationWeak.fix': 'खुली जगह पर जाएँ, दीवार और छत से दूर। थोड़ा रुकें, फिर कोशिश करें।',
   'err.network': 'इंटरनेट नहीं है',
@@ -277,7 +282,7 @@ export function LanguageToggle() {
       onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
       aria-label={t('lang.switchLabel')}
     >
-      <span aria-hidden="true">🌐</span> {t('lang.switch')}
+      <Icon name="globe" size={18} /> {t('lang.switch')}
     </button>
   );
 }
