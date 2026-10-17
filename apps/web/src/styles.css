@@ -78,11 +78,6 @@ button.link:hover, .text-button:hover { background: none; color: var(--primary-d
 .brand-lockup strong { font-size: .92rem; letter-spacing: -.02em; }
 .brand-lockup small { margin-top: 2px; color: var(--nav-muted); font-size: .63rem; }
 .brand-mark { display: block; width: 36px; height: 36px; border-radius: 10px; object-fit: cover; box-shadow: 0 7px 18px rgba(9,20,38,.16); }
-.sidebar-workspace { display: grid; margin: 0 3px 24px; padding: 10px 9px; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; border-radius: 10px; color: var(--nav-muted); }
-.workspace-initial { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; background: #f4f6ff; color: #aebfff; font-size: .72rem; font-weight: 800; }
-.sidebar-workspace > span:last-child { display: flex; min-width: 0; flex-direction: column; }
-.sidebar-workspace small { font-size: .59rem; }
-.sidebar-workspace strong { overflow: hidden; color: #738096; font-size: .69rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .side-nav { display: flex; flex-direction: column; gap: 5px; }
 .side-nav p { margin: 0 10px 8px; color: #a4abb6; font-size: .57rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 .side-nav a { display: flex; min-height: 43px; padding: 0 11px; align-items: center; gap: 11px; border-radius: 9px; color: #66717f; font-size: .78rem; font-weight: 600; text-decoration: none; transition: .18s ease; }
@@ -128,9 +123,6 @@ button.link:hover, .text-button:hover { background: none; color: var(--primary-d
 .page-heading { display: flex; min-height: 72px; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .page-heading h1 { color: #121d31; }
 .page-heading p { margin: 7px 0 0; color: var(--muted); font-size: .86rem; }
-.breadcrumb { display: flex; margin-bottom: 8px; align-items: center; gap: 8px; color: #7d899d; font-size: .65rem; font-weight: 750; letter-spacing: .03em; }
-.breadcrumb span { color: var(--primary); }
-.breadcrumb i { width: 3px; height: 3px; border-radius: 99px; background: #b7c0ce; }
 .heading-actions { display: flex; align-items: center; gap: 10px; }
 .date-chip { display: flex; min-height: 44px; padding: 7px 12px; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); box-shadow: var(--shadow-sm); }
 .date-chip > span:last-child { display: flex; flex-direction: column; }

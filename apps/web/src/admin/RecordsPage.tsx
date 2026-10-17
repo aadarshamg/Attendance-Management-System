@@ -60,9 +60,7 @@ export function RecordsPage() {
     <div className="dashboard-page">
       <section className="page-heading">
         <div>
-          <div className="breadcrumb"><span>Operations</span><i />Attendance</div>
           <h1>Attendance overview</h1>
-          <p>Monitor workforce presence, site activity, and exceptions in real time.</p>
         </div>
         <div className="heading-actions">
           <div className="date-chip"><span className="calendar-glyph" aria-hidden="true" /><span><small>Reporting date</small><strong>{new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</strong></span></div>

@@ -42,11 +42,7 @@ export function AdminLayout() {
       <aside className="admin-sidebar">
         <div className="brand-lockup">
           <img src="/agua-logo-mark.png" alt="AGUA Engineers" className="brand-mark" />
-          <span><strong>TrackFlow</strong><small>Workforce operations</small></span>
-        </div>
-        <div className="sidebar-workspace">
-          <span className="workspace-initial">T</span>
-          <span><small>Current workspace</small><strong>Attendance management</strong></span>
+          <span><strong>AGUA Engineers</strong><small>Attendance Management System</small></span>
         </div>
         <nav className="side-nav" aria-label="Primary navigation">
           <p>Workspace</p>

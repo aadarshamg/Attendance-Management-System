@@ -14,9 +14,9 @@ export default defineConfig({
       // App-shell precache only. Offline *capture* is out of scope for the MVP.
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
       manifest: {
-        name: 'TrackFlow Workforce Attendance',
-        short_name: 'TrackFlow',
-        description: 'Workforce attendance and site operations, in sync.',
+        name: 'AGUA Engineers Attendance Management System',
+        short_name: 'AGUA Attendance',
+        description: 'AGUA Engineers Attendance Management System.',
         theme_color: '#101b2d',
         background_color: '#101b2d',
         display: 'standalone',

@@ -12,9 +12,8 @@ export function SettingsPage() {
   return (
     <div className="settings-page">
       <header className="settings-heading">
-        <div className="breadcrumb"><span>Workspace</span><i />Settings</div>
         <h1>Appearance</h1>
-        <p>Personalize how TrackFlow looks on this device.</p>
+        <p>Personalize how the dashboard looks on this device.</p>
       </header>
 
       <section className="settings-card">
