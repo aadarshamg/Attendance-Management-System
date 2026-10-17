@@ -79,6 +79,31 @@ export class ImagesService {
     );
   }
 
+  /**
+   * Writes and deletes a tiny object, the same calls a photo upload makes, and reports
+   * the storage error by name (e.g. NoSuchBucket, InvalidAccessKeyId) instead of a
+   * silent "photo not saved".
+   */
+  async probe(): Promise<{ ok: boolean; bucket: string; error?: string }> {
+    const bucket = this.config.storage.bucket;
+    const key = 'healthcheck/probe.txt';
+    try {
+      await this.s3.send(
+        new PutObjectCommand({ Bucket: bucket, Key: key, Body: 'ok', ContentType: 'text/plain' }),
+      );
+      await this.delete(key);
+      return { ok: true, bucket };
+    } catch (err) {
+      const e = err as Error & { Code?: string; $metadata?: { httpStatusCode?: number } };
+      const status = e.$metadata?.httpStatusCode;
+      return {
+        ok: false,
+        bucket,
+        error: `${e.Code ?? e.name}${status ? ` (HTTP ${status})` : ''}: ${e.message}`.slice(0, 300),
+      };
+    }
+  }
+
   async signedGetUrl(key: string): Promise<string> {
     return getSignedUrl(
       this.s3,
