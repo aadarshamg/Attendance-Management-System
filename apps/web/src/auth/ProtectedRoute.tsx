@@ -14,7 +14,11 @@ export function ProtectedRoute({
   children: React.ReactNode;
 }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    // Staff-only pages (the dashboard) send a signed-out visitor to the staff login.
+    const staffOnly = roles !== undefined && !roles.includes('worker');
+    return <Navigate to={staffOnly ? '/staff' : '/login'} replace />;
+  }
   if (roles && !roles.includes(user.role)) {
     return <Navigate to={homeFor(user.role)} replace />;
   }

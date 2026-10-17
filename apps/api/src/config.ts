@@ -2,6 +2,8 @@
 export interface AppConfig {
   jwtSecret: string;
   jwtTtl: string;
+  /** Workers log in once on their own phone and stay signed in; staff keep the shorter jwtTtl. */
+  workerJwtTtl: string;
   /** S3-compatible object storage: Cloudflare R2, Supabase Storage, AWS S3, MinIO… */
   storage: {
     endpoint: string;
@@ -52,6 +54,7 @@ export function loadConfig(): AppConfig {
   return {
     jwtSecret: req('JWT_SECRET'),
     jwtTtl: process.env.JWT_TTL ?? '12h',
+    workerJwtTtl: process.env.WORKER_JWT_TTL ?? '90d',
     storage: {
       // R2_* names kept for compatibility; S3_* are accepted too.
       endpoint: req('S3_ENDPOINT', 'R2_ENDPOINT'),

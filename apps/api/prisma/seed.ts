@@ -40,7 +40,7 @@ async function main() {
       name: 'Priya Admin',
       role: 'admin',
       employeeCode: 'ADMIN001',
-      phone: '+91-9999900001',
+      phone: '9999900001',
       passwordHash,
     },
   });
@@ -52,16 +52,18 @@ async function main() {
       name: 'M. Reddy (Supervisor)',
       role: 'supervisor',
       employeeCode: 'SUP001',
-      phone: '+91-9999900002',
+      phone: '9999900002',
       passwordHash,
       assignedSiteId: towerB.id,
     },
   });
 
+  // Workers sign in with phone + PIN; the employee code / password path still works too.
+  const pinHash = await bcrypt.hash('1234', 10);
   const workers = [
-    { name: 'R. Kumar', code: 'W10482', siteId: towerB.id },
-    { name: 'S. Devi', code: 'W10483', siteId: towerB.id },
-    { name: 'A. Khan', code: 'W20991', siteId: metroSite.id },
+    { name: 'R. Kumar', code: 'W10482', phone: '9000000001', siteId: towerB.id },
+    { name: 'S. Devi', code: 'W10483', phone: '9000000002', siteId: towerB.id },
+    { name: 'A. Khan', code: 'W20991', phone: '9000000003', siteId: metroSite.id },
   ];
 
   for (const w of workers) {
@@ -72,7 +74,9 @@ async function main() {
         name: w.name,
         role: 'worker',
         employeeCode: w.code,
+        phone: w.phone,
         passwordHash,
+        pinHash,
         assignedSiteId: w.siteId,
       },
     });
@@ -82,6 +86,7 @@ async function main() {
   console.log('  admin      -> ADMIN001 / password123');
   console.log('  supervisor -> SUP001   / password123  (Tower-B)');
   console.log('  workers    -> W10482, W10483 (Tower-B), W20991 (Metro) / password123');
+  console.log('  worker PIN -> phone 9000000001 / 9000000002 / 9000000003, PIN 1234');
 }
 
 main()

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import type { MarkResponse } from '@ams/shared';
+import type { MarkResponse, MyPhotoResponse } from '@ams/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -38,6 +38,12 @@ export class AttendanceController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<MarkResponse> {
     return this.attendance.mark(user, dto, file);
+  }
+
+  @Get('me/photo')
+  @Roles('worker')
+  myPhoto(@CurrentUser() user: RequestUser): Promise<MyPhotoResponse> {
+    return this.attendance.myLatestPhoto(user.id);
   }
 
   @Get('me')

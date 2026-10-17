@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { CONSENT_NOTICE } from '@ams/shared';
 import { useAuth } from '../auth/AuthContext';
+import { LanguageToggle, useI18n } from '../lib/i18n';
+import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
+import { ProblemCard } from '../components/ProblemCard';
 
-/** DPDP Act 2023 (§11.1): capture plain-language consent before the first mark. */
+/**
+ * DPDP Act 2023 (§11.1): capture plain-language consent before the first mark.
+ * The text is shown in the worker's chosen language (English or Hindi).
+ */
 export function ConsentGate({ children }: { children: React.ReactNode }) {
   const { user, consent, logout } = useAuth();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<FriendlyError | null>(null);
 
   if (!user || user.role !== 'worker' || user.consentedAt) {
     return <>{children}</>;
@@ -14,26 +20,31 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
 
   async function agree() {
     setBusy(true);
-    setError(null);
+    setProblem(null);
     try {
       await consent();
     } catch (e) {
-      setError((e as Error).message);
+      setProblem(toFriendlyError(e, 'mark'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="card center-screen stack">
-      <h1>Before you start</h1>
-      <p>{CONSENT_NOTICE}</p>
-      {error && <p className="error">{error}</p>}
-      <button className="primary" onClick={agree} disabled={busy}>
-        {busy ? 'Saving…' : 'I understand and agree'}
+    <div className="worker-page">
+      <header className="worker-topbar">
+        <img src="/agua-logo-mark.png" alt="" className="worker-logo" />
+        <LanguageToggle />
+      </header>
+      <h1>{t('consent.title')}</h1>
+      <div className="consent-icons" aria-hidden="true">📷 📍 🕒</div>
+      <p className="consent-text">{t('consent.body')}</p>
+      {problem && <ProblemCard problem={problem} />}
+      <button className="confirm-button" onClick={agree} disabled={busy}>
+        <span aria-hidden="true">✅</span> {busy ? t('consent.saving') : t('consent.agree')}
       </button>
-      <button className="link" onClick={logout}>
-        Not now — sign out
+      <button className="worker-link quiet" onClick={logout}>
+        {t('consent.later')}
       </button>
     </div>
   );

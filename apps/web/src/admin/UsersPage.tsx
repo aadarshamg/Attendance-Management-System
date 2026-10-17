@@ -13,6 +13,7 @@ interface FormState {
   phone: string;
   assignedSiteId: string;
   password: string;
+  pin: string;
   isActive: boolean;
 }
 
@@ -23,6 +24,7 @@ const BLANK: FormState = {
   phone: '',
   assignedSiteId: '',
   password: '',
+  pin: '',
   isActive: true,
 };
 
@@ -45,6 +47,7 @@ export function UsersPage() {
           assignedSiteId,
           isActive: f.isActive,
           ...(f.password ? { password: f.password } : {}),
+          ...(f.pin && f.role === 'worker' ? { pin: f.pin } : {}),
         });
       }
       return api.createUser({
@@ -53,7 +56,8 @@ export function UsersPage() {
         employeeCode: f.employeeCode,
         phone: f.phone || undefined,
         assignedSiteId,
-        password: f.password,
+        ...(f.password ? { password: f.password } : {}),
+        ...(f.pin && f.role === 'worker' ? { pin: f.pin } : {}),
       });
     },
     onSuccess: () => {
@@ -67,6 +71,8 @@ export function UsersPage() {
     onSuccess: invalidate,
   });
 
+  const isWorker = form?.role === 'worker';
+
   const startEdit = (u: UserSummary) =>
     setForm({
       id: u.id,
@@ -76,6 +82,7 @@ export function UsersPage() {
       phone: u.phone ?? '',
       assignedSiteId: u.assignedSiteId ?? '',
       password: '',
+      pin: '',
       isActive: u.isActive,
     });
 
@@ -134,17 +141,43 @@ export function UsersPage() {
             </select>
           </label>
           <label>
-            Phone
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            Phone {isWorker ? '(worker logs in with this)' : '(optional)'}
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="10-digit mobile"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              required={isWorker && Boolean(form.pin)}
+            />
           </label>
+          {isWorker && (
+            <label>
+              {form.id ? 'Set new 4-digit PIN (optional)' : '4-digit login PIN'}
+              <input
+                inputMode="numeric"
+                autoComplete="off"
+                pattern="\d{4}"
+                maxLength={4}
+                placeholder="e.g. 4821"
+                value={form.pin}
+                onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                required={!form.id && !form.password}
+              />
+            </label>
+          )}
           <label>
-            {form.id ? 'Reset password (optional)' : 'Password'}
+            {form.id
+              ? 'Reset password (optional)'
+              : isWorker
+                ? 'Password (optional — for employee-code login)'
+                : 'Password'}
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               minLength={8}
-              required={!form.id}
+              required={!form.id && !isWorker}
             />
           </label>
           {form.id && (
@@ -177,6 +210,7 @@ export function UsersPage() {
               <th>Code</th>
               <th>Role</th>
               <th>Site</th>
+              <th>Phone login</th>
               <th>Consent</th>
               <th>Active</th>
               <th />
@@ -189,6 +223,7 @@ export function UsersPage() {
                 <td>{u.employeeCode}</td>
                 <td>{u.role}</td>
                 <td>{u.assignedSiteName ?? '—'}</td>
+                <td>{u.role === 'worker' ? (u.hasPin ? `${u.phone} · PIN set` : 'No PIN') : '—'}</td>
                 <td>{u.consentedAt ? new Date(u.consentedAt).toLocaleDateString() : '—'}</td>
                 <td>{u.isActive ? 'yes' : 'no'}</td>
                 <td className="row gap">

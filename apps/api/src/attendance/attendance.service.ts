@@ -5,7 +5,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import type { MarkResponse } from '@ams/shared';
+import type { MarkResponse, MyPhotoResponse } from '@ams/shared';
 import { APP_CONFIG, AppConfig } from '../config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -141,5 +141,21 @@ export class AttendanceService {
       this.prisma.attendanceRecord.count({ where: { workerId: userId } }),
     ]);
     return { data: rows.map(toAttendanceRecord), page, limit, total };
+  }
+
+  /** The worker's most recent attendance photo, so the home screen can show who is signed in. */
+  async myLatestPhoto(userId: string): Promise<MyPhotoResponse> {
+    const latest = await this.prisma.attendanceRecord.findFirst({
+      where: { workerId: userId, imageStatus: 'stored', imageObjectKey: { not: null } },
+      orderBy: { serverTimestamp: 'desc' },
+      select: { imageObjectKey: true },
+    });
+    if (!latest?.imageObjectKey) return { imageUrl: null };
+    try {
+      return { imageUrl: await this.images.signedGetUrl(latest.imageObjectKey) };
+    } catch (err) {
+      this.logger.warn(`Could not sign photo URL for worker ${userId}: ${(err as Error).message}`);
+      return { imageUrl: null };
+    }
   }
 }

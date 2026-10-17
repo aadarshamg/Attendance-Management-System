@@ -1,29 +1,37 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import type { MarkType } from '@ams/shared';
 import { getGpsFix, grabFrame, startCamera, type CameraHandle, type GpsFix } from '../lib/camera';
 import { compressStamped, downscale, type CompressResult } from '../lib/compress';
 import { drawWatermark } from '../lib/watermark';
 import { api } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
+import { LanguageToggle, useI18n } from '../lib/i18n';
+import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
+import { ProblemCard } from '../components/ProblemCard';
 
-type Phase = 'camera' | 'processing' | 'preview' | 'submitting';
+type Phase = 'starting' | 'camera' | 'processing' | 'preview' | 'submitting' | 'no-camera';
 
 export function CapturePage() {
   const [params] = useSearchParams();
   const markType: MarkType = params.get('type') === 'check_out' ? 'check_out' : 'check_in';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { t } = useI18n();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraRef = useRef<CameraHandle | null>(null);
-  const [phase, setPhase] = useState<Phase>('camera');
-  const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>('starting');
+  const [problem, setProblem] = useState<FriendlyError | null>(null);
   const [result, setResult] = useState<CompressResult | null>(null);
   const [fix, setFix] = useState<GpsFix | null>(null);
 
-  useEffect(() => {
+  const openCamera = useCallback(() => {
     let cancelled = false;
+    setPhase('starting');
+    setProblem(null);
     startCamera('user')
       .then((handle) => {
         if (cancelled) {
@@ -35,18 +43,30 @@ export function CapturePage() {
           videoRef.current.srcObject = handle.stream;
           void videoRef.current.play();
         }
+        setPhase('camera');
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        if (cancelled) return;
+        setProblem(toFriendlyError(e, 'mark'));
+        setPhase('no-camera');
+      });
     return () => {
       cancelled = true;
-      cameraRef.current?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    const cancel = openCamera();
+    return () => {
+      cancel();
+      cameraRef.current?.stop();
+    };
+  }, [openCamera]);
 
   async function onCapture() {
     if (!videoRef.current || !user) return;
     setPhase('processing');
-    setError(null);
+    setProblem(null);
     try {
       const frame = grabFrame(videoRef.current);
       const gps = await getGpsFix();
@@ -68,7 +88,7 @@ export function CapturePage() {
       setPhase('preview');
       cameraRef.current?.stop();
     } catch (e) {
-      setError((e as Error).message);
+      setProblem(toFriendlyError(e, 'mark'));
       setPhase('camera');
     }
   }
@@ -77,20 +97,13 @@ export function CapturePage() {
     if (result) URL.revokeObjectURL(result.previewUrl);
     setResult(null);
     setFix(null);
-    setPhase('camera');
-    startCamera('user').then((handle) => {
-      cameraRef.current = handle;
-      if (videoRef.current) {
-        videoRef.current.srcObject = handle.stream;
-        void videoRef.current.play();
-      }
-    });
+    openCamera();
   }
 
   async function submit() {
     if (!result || !fix) return;
     setPhase('submitting');
-    setError(null);
+    setProblem(null);
     try {
       const form = new FormData();
       const ext = result.mime === 'image/webp' ? 'webp' : 'jpg';
@@ -101,53 +114,77 @@ export function CapturePage() {
       form.append('gpsAccuracyM', String(fix.accuracyM));
       form.append('deviceTimestamp', new Date().toISOString());
       const marked = await api.mark(form);
+      // The home button flips between start/end from this list, so it must not be stale.
+      await queryClient.invalidateQueries({ queryKey: ['me'] });
+      void queryClient.invalidateQueries({ queryKey: ['myPhoto'] });
       navigate('/confirmation', { state: marked, replace: true });
     } catch (e) {
-      setError((e as Error).message);
+      setProblem(toFriendlyError(e, 'mark'));
       setPhase('preview');
     }
   }
 
+  const isIn = markType === 'check_in';
+  const showVideo = phase === 'starting' || phase === 'camera' || phase === 'processing';
+
   return (
-    <div className="stack page">
-      <header className="row-between">
-        <h1>{markType === 'check_in' ? 'Check In' : 'Check Out'}</h1>
-        <button className="link" onClick={() => navigate('/')}>
-          Cancel
+    <div className="worker-page">
+      <header className="worker-topbar">
+        <button className="back-button" onClick={() => navigate('/')}>
+          ← {t('capture.back')}
         </button>
+        <LanguageToggle />
       </header>
 
-      {error && <p className="error">{error}</p>}
+      <h1 className={`capture-title ${isIn ? 'is-in' : 'is-out'}`}>
+        <span aria-hidden="true">{isIn ? '🏗️' : '🏠'}</span>{' '}
+        {isIn ? t('capture.startTitle') : t('capture.endTitle')}
+      </h1>
 
-      <div className="camera-frame">
-        {phase !== 'preview' && phase !== 'submitting' ? (
-          <video ref={videoRef} playsInline muted className="camera-view" />
-        ) : (
-          result && <img src={result.previewUrl} alt="Captured attendance" className="camera-view" />
-        )}
-      </div>
-
-      {(phase === 'camera' || phase === 'processing') && (
-        <button className="big primary" onClick={onCapture} disabled={phase === 'processing'}>
-          {phase === 'processing' ? 'Reading GPS & stamping…' : 'Capture photo'}
-        </button>
+      {problem && (
+        <ProblemCard
+          problem={problem}
+          onRetry={
+            phase === 'no-camera' ? openCamera : phase === 'camera' ? onCapture : phase === 'preview' ? submit : undefined
+          }
+        />
       )}
 
-      {phase === 'preview' && result && fix && (
-        <div className="stack">
-          <p className="muted">
-            {Math.round(result.bytes / 1024)} KB · ±{Math.round(fix.accuracyM)} m accuracy
-          </p>
-          <div className="row gap">
-            <button onClick={retake}>Retake</button>
-            <button className="primary" onClick={submit}>
-              Submit attendance
-            </button>
-          </div>
+      {phase !== 'no-camera' && (
+        <div className="camera-frame">
+          {showVideo ? (
+            <video ref={videoRef} playsInline muted className="camera-view" />
+          ) : (
+            result && <img src={result.previewUrl} alt="" className="camera-view" />
+          )}
         </div>
       )}
 
-      {phase === 'submitting' && <p className="muted">Uploading…</p>}
+      {showVideo && (
+        <>
+          <p className="capture-hint">{t('capture.hint')}</p>
+          <button
+            className="shutter-button"
+            onClick={onCapture}
+            disabled={phase !== 'camera'}
+          >
+            <span aria-hidden="true">📷</span>{' '}
+            {phase === 'processing' ? t('capture.working') : t('capture.takePhoto')}
+          </button>
+        </>
+      )}
+
+      {(phase === 'preview' || phase === 'submitting') && (
+        <div className="preview-actions">
+          <button onClick={retake} disabled={phase === 'submitting'}>
+            <span aria-hidden="true">↺</span> {t('capture.retake')}
+          </button>
+          <button className="confirm-button" onClick={submit} disabled={phase === 'submitting'}>
+            <span aria-hidden="true">✅</span>{' '}
+            {phase === 'submitting' ? t('capture.saving') : t('capture.submit')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

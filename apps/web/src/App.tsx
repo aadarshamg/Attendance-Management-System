@@ -41,7 +41,8 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={<p className="muted page">Loading…</p>}>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage variant="worker" />} />
+            <Route path="/staff" element={<LoginPage variant="staff" />} />
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/capture" element={<Worker><CapturePage /></Worker>} />
             <Route path="/confirmation" element={<Worker><ConfirmationPage /></Worker>} />
