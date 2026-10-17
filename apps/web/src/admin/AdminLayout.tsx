@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
 
 const navItems = [
-  { to: '/admin', end: true, label: 'Overview & records', icon: 'overview' },
+  { to: '/admin', end: true, label: 'Attendance', icon: 'overview' },
   { to: '/admin/users', label: 'People', icon: 'people', adminOnly: true },
   { to: '/admin/sites', label: 'Sites & geofences', icon: 'sites', adminOnly: true },
   { to: '/admin/audit', label: 'Audit trail', icon: 'audit', adminOnly: true },

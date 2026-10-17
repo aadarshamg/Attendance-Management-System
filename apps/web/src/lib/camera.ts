@@ -82,7 +82,7 @@ export async function getGpsFix(): Promise<GpsFix> {
 function geolocationMessage(err: GeolocationPositionError): string {
   switch (err.code) {
     case err.PERMISSION_DENIED:
-      return 'Location permission denied. Attendance needs your GPS location — enable it and try again.';
+      return 'Location permission denied. Attendance needs your GPS location. Enable it and try again.';
     case err.POSITION_UNAVAILABLE:
       return 'Location unavailable. Move to open sky and try again.';
     case err.TIMEOUT:

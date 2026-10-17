@@ -81,7 +81,7 @@ export function AuditPage() {
                 </td>
                 <td>
                   <code className="details">
-                    {e.detailsJson ? JSON.stringify(e.detailsJson) : '—'}
+                    {e.detailsJson ? JSON.stringify(e.detailsJson) : '-'}
                   </code>
                 </td>
               </tr>

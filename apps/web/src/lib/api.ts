@@ -8,7 +8,6 @@ import type {
   MyPhotoResponse,
   Paginated,
   RecordDetail,
-  RecordReview,
   SiteInput,
   SiteSummary,
   UserCreateInput,
@@ -87,11 +86,6 @@ export const api = {
   adminRecords: (params: URLSearchParams) =>
     request<Paginated<AttendanceRecord>>(`/admin/attendance?${params.toString()}`),
   adminRecord: (id: string) => request<RecordDetail>(`/admin/attendance/${id}`),
-  reviewRecord: (id: string, review: RecordReview) =>
-    request<RecordDetail>(`/admin/attendance/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(review),
-    }),
   adminAudit: (params: URLSearchParams) =>
     request<Paginated<AuditEntry>>(`/admin/audit?${params.toString()}`),
 

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { LanguageToggle, useI18n } from '../lib/i18n';
 import { StatusIcon } from '../components/StatusBadge';
+import { Icon } from '../components/Icon';
 
 export function HistoryPage() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export function HistoryPage() {
     <div className="worker-page">
       <header className="worker-topbar">
         <button className="back-button" onClick={() => navigate('/')}>
-          ← {t('history.back')}
+          <Icon name="arrowLeft" size={18} /> {t('history.back')}
         </button>
         <LanguageToggle />
       </header>
@@ -24,7 +25,9 @@ export function HistoryPage() {
         const when = new Date(r.serverTimestamp);
         return (
           <div key={r.id} className="history-row">
-            <span className="today-icon" aria-hidden="true">{isIn ? '🏗️' : '🏠'}</span>
+            <span className={`today-icon ${isIn ? 'is-in' : 'is-out'}`}>
+              <Icon name={isIn ? 'hardhat' : 'home'} size={22} />
+            </span>
             <div className="history-main">
               <strong>{isIn ? t('home.startWork') : t('home.endWork')}</strong>
               <span className="muted">
@@ -33,7 +36,7 @@ export function HistoryPage() {
                 {when.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}
               </span>
             </div>
-            <StatusIcon status={r.status} />
+            <StatusIcon />
           </div>
         );
       })}

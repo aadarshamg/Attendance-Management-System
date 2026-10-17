@@ -170,7 +170,7 @@ export function UsersPage() {
             {form.id
               ? 'Reset password (optional)'
               : isWorker
-                ? 'Password (optional — for employee-code login)'
+                ? 'Password (optional, for employee-code login)'
                 : 'Password'}
             <input
               type="password"
@@ -222,9 +222,9 @@ export function UsersPage() {
                 <td>{u.name}</td>
                 <td>{u.employeeCode}</td>
                 <td>{u.role}</td>
-                <td>{u.assignedSiteName ?? '—'}</td>
-                <td>{u.role === 'worker' ? (u.hasPin ? `${u.phone} · PIN set` : 'No PIN') : '—'}</td>
-                <td>{u.consentedAt ? new Date(u.consentedAt).toLocaleDateString() : '—'}</td>
+                <td>{u.assignedSiteName ?? '-'}</td>
+                <td>{u.role === 'worker' ? (u.hasPin ? `${u.phone} · PIN set` : 'No PIN') : '-'}</td>
+                <td>{u.consentedAt ? new Date(u.consentedAt).toLocaleDateString() : '-'}</td>
                 <td>{u.isActive ? 'yes' : 'no'}</td>
                 <td className="row gap">
                   <button className="link" onClick={() => startEdit(u)}>

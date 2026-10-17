@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { LanguageToggle, useI18n } from '../lib/i18n';
 import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
 import { ProblemCard } from '../components/ProblemCard';
+import { Icon } from '../components/Icon';
 
 type Phase = 'starting' | 'camera' | 'processing' | 'preview' | 'submitting' | 'no-camera';
 
@@ -131,13 +132,13 @@ export function CapturePage() {
     <div className="worker-page">
       <header className="worker-topbar">
         <button className="back-button" onClick={() => navigate('/')}>
-          ← {t('capture.back')}
+          <Icon name="arrowLeft" size={18} /> {t('capture.back')}
         </button>
         <LanguageToggle />
       </header>
 
       <h1 className={`capture-title ${isIn ? 'is-in' : 'is-out'}`}>
-        <span aria-hidden="true">{isIn ? '🏗️' : '🏠'}</span>{' '}
+        <Icon name={isIn ? 'hardhat' : 'home'} size={30} />
         {isIn ? t('capture.startTitle') : t('capture.endTitle')}
       </h1>
 
@@ -168,7 +169,7 @@ export function CapturePage() {
             onClick={onCapture}
             disabled={phase !== 'camera'}
           >
-            <span aria-hidden="true">📷</span>{' '}
+            <Icon name="camera" size={24} />
             {phase === 'processing' ? t('capture.working') : t('capture.takePhoto')}
           </button>
         </>
@@ -177,10 +178,10 @@ export function CapturePage() {
       {(phase === 'preview' || phase === 'submitting') && (
         <div className="preview-actions">
           <button onClick={retake} disabled={phase === 'submitting'}>
-            <span aria-hidden="true">↺</span> {t('capture.retake')}
+            <Icon name="retry" size={20} /> {t('capture.retake')}
           </button>
           <button className="confirm-button" onClick={submit} disabled={phase === 'submitting'}>
-            <span aria-hidden="true">✅</span>{' '}
+            <Icon name="check" size={22} />
             {phase === 'submitting' ? t('capture.saving') : t('capture.submit')}
           </button>
         </div>

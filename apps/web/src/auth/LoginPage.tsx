@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { LanguageToggle, useI18n } from '../lib/i18n';
 import { toFriendlyError, type FriendlyError } from '../lib/friendlyError';
 import { ProblemCard } from '../components/ProblemCard';
+import { Icon } from '../components/Icon';
 
 /**
  * Two separate links: /login is phone + PIN for workers (they never see the staff form),
@@ -27,11 +28,11 @@ export function LoginPage({ variant }: { variant: 'worker' | 'staff' }) {
     setProblem(null);
     if (variant === 'worker') {
       if (!normalizePhone(phone)) {
-        setProblem({ icon: '📱', title: 'err.badPhone', fix: 'err.badPhone.fix' });
+        setProblem({ icon: 'phone', title: 'err.badPhone', fix: 'err.badPhone.fix' });
         return;
       }
       if (!PIN_PATTERN.test(pin)) {
-        setProblem({ icon: '🔢', title: 'err.badPin', fix: 'err.badPin.fix' });
+        setProblem({ icon: 'lock', title: 'err.badPin', fix: 'err.badPin.fix' });
         return;
       }
     }
@@ -66,56 +67,76 @@ export function LoginPage({ variant }: { variant: 'worker' | 'staff' }) {
           <LanguageToggle />
         </div>
         <div className="login-form-wrap">
+          <span className="login-role">
+            <Icon name={variant === 'worker' ? 'hardhat' : 'badge'} size={16} />
+            {variant === 'worker' ? t('login.workerRole') : t('login.staffRole')}
+          </span>
           <h1>{variant === 'worker' ? t('login.title') : t('login.staffTitle')}</h1>
+          <p className="login-subtitle">
+            {variant === 'worker' ? t('login.workerSubtitle') : t('login.staffSubtitle')}
+          </p>
           <form onSubmit={onSubmit} className="login-form">
             {variant === 'worker' ? (
               <>
-                <label>
-                  <span><span aria-hidden="true">📱</span> {t('login.phone')}</span>
-                  <input
-                    className="login-big-input"
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/[^\d+\s-]/g, ''))}
-                    placeholder={t('login.phonePlaceholder')}
-                    maxLength={16}
-                    required
-                  />
+                <label className="field">
+                  <span className="field-label">{t('login.phone')}</span>
+                  <span className="field-control">
+                    <Icon name="phone" className="field-icon" />
+                    <input
+                      className="login-big-input"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/[^\d+\s-]/g, ''))}
+                      placeholder={t('login.phonePlaceholder')}
+                      maxLength={16}
+                      required
+                    />
+                  </span>
                 </label>
-                <label>
-                  <span><span aria-hidden="true">🔢</span> {t('login.pin')}</span>
-                  <input
-                    className="login-big-input pin-input"
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="current-password"
-                    pattern="\d{4}"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="••••"
-                    maxLength={4}
-                    required
-                  />
+                <label className="field">
+                  <span className="field-label">{t('login.pin')}</span>
+                  <span className="field-control">
+                    <Icon name="lock" className="field-icon" />
+                    <input
+                      className="login-big-input pin-input"
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="current-password"
+                      pattern="\d{4}"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="• • • •"
+                      maxLength={4}
+                      required
+                    />
+                  </span>
                 </label>
               </>
             ) : (
               <>
-                <label>
-                  {t('login.employeeCode')}
-                  <input
-                    value={employeeCode}
-                    onChange={(e) => setEmployeeCode(e.target.value)}
-                    autoCapitalize="characters"
-                    autoComplete="username"
-                    placeholder={t('login.employeeCodePlaceholder')}
-                    required
-                  />
+                <label className="field">
+                  <span className="field-label">{t('login.employeeCode')}</span>
+                  <span className="field-control">
+                    <Icon name="user" className="field-icon" />
+                    <input
+                      value={employeeCode}
+                      onChange={(e) => setEmployeeCode(e.target.value)}
+                      // Login IDs can be emails: never let a phone keyboard capitalise them.
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      autoComplete="username"
+                      placeholder={t('login.employeeCodePlaceholder')}
+                      required
+                    />
+                  </span>
                 </label>
-                <label>
-                  {t('login.password')}
-                  <span className="password-field">
+                <label className="field">
+                  <span className="field-label">{t('login.password')}</span>
+                  <span className="field-control">
+                    <Icon name="lock" className="field-icon" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
@@ -124,7 +145,11 @@ export function LoginPage({ variant }: { variant: 'worker' | 'staff' }) {
                       placeholder={t('login.passwordPlaceholder')}
                       required
                     />
-                    <button type="button" onClick={() => setShowPassword((visible) => !visible)}>
+                    <button
+                      type="button"
+                      className="field-action"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                    >
                       {showPassword ? t('login.hide') : t('login.show')}
                     </button>
                   </span>
@@ -133,7 +158,8 @@ export function LoginPage({ variant }: { variant: 'worker' | 'staff' }) {
             )}
             {problem && <ProblemCard problem={problem} />}
             <button className="login-submit" type="submit" disabled={busy}>
-              <span>{busy ? t('login.busy') : t('login.submit')}</span><span aria-hidden="true">→</span>
+              <span>{busy ? t('login.busy') : t('login.submit')}</span>
+              <Icon name="arrowRight" size={18} />
             </button>
           </form>
         </div>
