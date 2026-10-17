@@ -98,7 +98,10 @@ export class AttendanceService {
         data: { imageObjectKey: key },
       });
     } catch (err) {
-      this.logger.error(`Image upload failed for record ${record.id}`, err as Error);
+      this.logger.error(
+        `Image upload failed for record ${record.id}: ${(err as Error).name}: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
       await this.prisma.attendanceRecord.update({
         where: { id: record.id },
         data: { imageStatus: 'purged' },

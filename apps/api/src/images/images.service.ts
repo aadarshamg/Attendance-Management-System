@@ -23,6 +23,11 @@ export class ImagesService {
       region: config.storage.region,
       endpoint: config.storage.endpoint,
       forcePathStyle: config.storage.forcePathStyle,
+      // SDK >= 3.729 adds CRC32 checksum headers to every upload by default; S3-compatible
+      // stores (Supabase Storage, R2, MinIO) reject or mishandle them, so every photo
+      // upload failed. Only send checksums when an operation requires one.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId: config.storage.accessKeyId,
         secretAccessKey: config.storage.secretAccessKey,
