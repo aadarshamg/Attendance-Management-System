@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import type { AuthUser } from '@ams/shared';
+import type { AuthUser, LoginResponse } from '@ams/shared';
 import { api, setAuthToken } from '../lib/api';
 
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
   login: (employeeCode: string, password: string) => Promise<AuthUser>;
+  loginWithPin: (phone: string, pin: string) => Promise<AuthUser>;
   logout: () => void;
   refresh: () => Promise<void>;
   consent: () => Promise<void>;
@@ -56,14 +57,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('ams:unauthorized', onUnauthorized);
   }, [logout]);
 
-  const login = useCallback(async (employeeCode: string, password: string) => {
-    const res = await api.login(employeeCode, password);
+  const startSession = useCallback((res: LoginResponse) => {
     setAuthToken(res.token);
     const next: Persisted = { token: res.token, user: res.user };
     persist(next);
     setState(next);
     return res.user;
   }, []);
+
+  const login = useCallback(
+    async (employeeCode: string, password: string) =>
+      startSession(await api.login(employeeCode, password)),
+    [startSession],
+  );
+
+  const loginWithPin = useCallback(
+    async (phone: string, pin: string) => startSession(await api.pinLogin(phone, pin)),
+    [startSession],
+  );
 
   const refresh = useCallback(async () => {
     const user = await api.me();
@@ -75,6 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Workers stay signed in for months, so re-read the profile on launch: a site
+  // move or name fix by the admin then shows up (and is stamped on photos) at once.
+  useEffect(() => {
+    if (readPersisted()) refresh().catch(() => undefined);
+  }, [refresh]);
+
   const consent = useCallback(async () => {
     await api.giveConsent();
     await refresh();
@@ -85,11 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: state?.user ?? null,
       token: state?.token ?? null,
       login,
+      loginWithPin,
       logout,
       refresh,
       consent,
     }),
-    [state, login, logout, refresh, consent],
+    [state, login, loginWithPin, logout, refresh, consent],
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

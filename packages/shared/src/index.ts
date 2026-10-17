@@ -31,6 +31,27 @@ export const LoginRequest = z.object({
 });
 export type LoginRequest = z.infer<typeof LoginRequest>;
 
+/** A worker's PIN: exactly 4 digits. */
+export const PIN_PATTERN = /^\d{4}$/;
+
+/**
+ * Reduce an Indian mobile number to its bare 10 digits so "+91 98765-43210",
+ * "098765 43210" and "9876543210" all match. Returns null if it isn't 10 digits.
+ */
+export function normalizePhone(raw: string): string | null {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return /^\d{10}$/.test(digits) ? digits : null;
+}
+
+/** Workers' simple login: mobile number + 4-digit PIN. */
+export const PinLoginRequest = z.object({
+  phone: z.string().min(1).max(32),
+  pin: z.string().regex(PIN_PATTERN),
+});
+export type PinLoginRequest = z.infer<typeof PinLoginRequest>;
+
 export const AuthUser = z.object({
   id: z.string(),
   name: z.string(),
@@ -85,6 +106,10 @@ export const MarkResponse = z.object({
   flagReasons: z.array(FlagReason),
 });
 export type MarkResponse = z.infer<typeof MarkResponse>;
+
+/** The worker's own latest photo, shown on their home screen so they can recognise their account. */
+export const MyPhotoResponse = z.object({ imageUrl: z.string().url().nullable() });
+export type MyPhotoResponse = z.infer<typeof MyPhotoResponse>;
 
 // ---------- Records ----------
 
@@ -182,6 +207,8 @@ export const UserSummary = z.object({
   assignedSiteName: z.string().nullable(),
   isActive: z.boolean(),
   consentedAt: z.string().datetime().nullable(),
+  /** Whether the worker has a PIN for phone + PIN login. */
+  hasPin: z.boolean(),
 });
 export type UserSummary = z.infer<typeof UserSummary>;
 
@@ -191,7 +218,10 @@ export const UserCreateInput = z.object({
   employeeCode: z.string().min(1).max(64),
   phone: z.string().max(32).optional(),
   assignedSiteId: z.string().nullable().optional(),
-  password: z.string().min(8).max(256),
+  /** Optional for workers who log in with phone + PIN only. */
+  password: z.string().min(8).max(256).optional(),
+  /** Workers only. */
+  pin: z.string().regex(PIN_PATTERN).optional(),
 });
 export type UserCreateInput = z.infer<typeof UserCreateInput>;
 
@@ -202,6 +232,7 @@ export const UserUpdateInput = z.object({
   assignedSiteId: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(8).max(256).optional(),
+  pin: z.string().regex(PIN_PATTERN).optional(),
 });
 export type UserUpdateInput = z.infer<typeof UserUpdateInput>;
 

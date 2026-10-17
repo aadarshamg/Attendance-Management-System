@@ -106,6 +106,7 @@ just work, including on your phone.
 |---|---|
 | `ADMIN001` | `password123` |
 | `W10482` | `password123` |
+| phone `9000000001` (Worker tab) | PIN `1234` |
 
 **Change or remove these before this is a real production URL** — they're seed/demo
 accounts, currently re-created on every deploy (see "Notes" below).

@@ -5,6 +5,7 @@ import type {
   ConsentResponse,
   LoginResponse,
   MarkResponse,
+  MyPhotoResponse,
   Paginated,
   RecordDetail,
   RecordReview,
@@ -69,6 +70,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ employeeCode, password }),
     }),
+  pinLogin: (phone: string, pin: string) =>
+    request<LoginResponse>('/auth/pin-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, pin }),
+    }),
   me: () => request<AuthUser>('/auth/me'),
   giveConsent: () => request<ConsentResponse>('/auth/consent', { method: 'POST' }),
 
@@ -76,6 +82,7 @@ export const api = {
     request<MarkResponse>('/attendance/mark', { method: 'POST', body: form }),
   myRecords: (page = 1) =>
     request<Paginated<AttendanceRecord>>(`/attendance/me?page=${page}&limit=50`),
+  myPhoto: () => request<MyPhotoResponse>('/attendance/me/photo'),
 
   adminRecords: (params: URLSearchParams) =>
     request<Paginated<AttendanceRecord>>(`/admin/attendance?${params.toString()}`),

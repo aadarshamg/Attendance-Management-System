@@ -1,30 +1,35 @@
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import type { MarkResponse } from '@ams/shared';
-import { FlagReasons, StatusBadge } from '../components/StatusBadge';
+import { useI18n } from '../lib/i18n';
 
 export function ConfirmationPage() {
   const location = useLocation();
+  const { t, locale } = useI18n();
   const mark = location.state as MarkResponse | null;
   if (!mark) return <Navigate to="/" replace />;
 
+  const isIn = mark.markType === 'check_in';
+  const time = new Date(mark.serverTimestamp).toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
   return (
-    <div className="stack page">
-      <h1>{mark.markType === 'check_in' ? 'Checked in' : 'Checked out'}</h1>
-      <div className="card stack">
-        <div className="row-between">
-          <strong>Recorded (server time)</strong>
-          <StatusBadge status={mark.status} />
-        </div>
-        <div>{new Date(mark.serverTimestamp).toLocaleString()}</div>
-        <div className="muted">{mark.address ?? 'Address could not be resolved.'}</div>
-        <div className="muted">
-          {mark.latitude.toFixed(5)}, {mark.longitude.toFixed(5)} · ±{Math.round(mark.gpsAccuracyM)} m ·{' '}
-          {mark.withinGeofence ? 'inside geofence' : 'outside geofence'}
-        </div>
-        <FlagReasons reasons={mark.flagReasons} />
+    <div className="worker-page done-page">
+      <div className={`done-badge ${mark.status === 'ok' ? 'is-ok' : 'is-flagged'}`} aria-hidden="true">
+        {mark.status === 'ok' ? '✓' : '!'}
       </div>
-      <Link to="/" className="link">
-        ← Back to home
+      <h1>{isIn ? t('done.in') : t('done.out')}</h1>
+      <p className="done-time">
+        <span aria-hidden="true">🕒</span> {t('done.savedAt', { time })}
+      </p>
+      {mark.status === 'flagged' && (
+        <p className="worker-note warn">
+          <span aria-hidden="true">⚠️</span> {t('done.check')}
+        </p>
+      )}
+      <Link to="/" replace className="confirm-button done-ok">
+        {t('done.home')}
       </Link>
     </div>
   );

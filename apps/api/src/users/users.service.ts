@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
-import type { Role, UserSummary } from '@ams/shared';
+import { normalizePhone, type Role, type UserSummary } from '@ams/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -18,6 +19,7 @@ type DbUser = {
   assignedSiteId: string | null;
   isActive: boolean;
   consentedAt: Date | null;
+  pinHash: string | null;
   assignedSite: { name: string } | null;
 };
 
@@ -32,6 +34,7 @@ function toSummary(u: DbUser): UserSummary {
     assignedSiteName: u.assignedSite?.name ?? null,
     isActive: u.isActive,
     consentedAt: u.consentedAt ? u.consentedAt.toISOString() : null,
+    hasPin: Boolean(u.pinHash),
   };
 }
 
@@ -43,7 +46,8 @@ interface CreateInput {
   employeeCode: string;
   phone?: string;
   assignedSiteId?: string | null;
-  password: string;
+  password?: string;
+  pin?: string;
 }
 
 interface UpdateInput {
@@ -53,6 +57,7 @@ interface UpdateInput {
   assignedSiteId?: string | null;
   isActive?: boolean;
   password?: string;
+  pin?: string;
 }
 
 @Injectable()
@@ -72,6 +77,19 @@ export class UsersService {
     if (!site) throw new BadRequestException('assignedSiteId does not exist');
   }
 
+  /** Normalises a phone to its 10 digits (null when blank) and rejects one another user already has. */
+  private async checkPhone(raw: string | null | undefined, selfId?: string): Promise<string | null> {
+    if (!raw?.trim()) return null;
+    const phone = normalizePhone(raw);
+    if (!phone) throw new BadRequestException('Phone must be a 10-digit mobile number');
+    const taken = await this.prisma.user.findFirst({
+      where: { phone, ...(selfId ? { id: { not: selfId } } : {}) },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException('This phone number is already used by another user');
+    return phone;
+  }
+
   async create(actorId: string, input: CreateInput): Promise<UserSummary> {
     const dupe = await this.prisma.user.findUnique({ where: { employeeCode: input.employeeCode } });
     if (dupe) throw new ConflictException('employeeCode already in use');
@@ -79,15 +97,29 @@ export class UsersService {
     if (input.role === 'worker' && !input.assignedSiteId) {
       throw new BadRequestException('Workers must be assigned to a site');
     }
+    if (input.pin && input.role !== 'worker') {
+      throw new BadRequestException('Only workers can have a PIN');
+    }
+    if (!input.password && !input.pin) {
+      throw new BadRequestException(
+        input.role === 'worker' ? 'Set a PIN or a password' : 'A password is required',
+      );
+    }
+    const phone = await this.checkPhone(input.phone);
+    if (input.pin && !phone) {
+      throw new BadRequestException('A phone number is required for PIN login');
+    }
 
     const user = await this.prisma.user.create({
       data: {
         name: input.name,
         role: input.role,
         employeeCode: input.employeeCode,
-        phone: input.phone ?? null,
+        phone,
         assignedSiteId: input.assignedSiteId ?? null,
-        passwordHash: await bcrypt.hash(input.password, 10),
+        // PIN-only workers get an unguessable password so employee-code login stays closed.
+        passwordHash: await bcrypt.hash(input.password ?? randomBytes(32).toString('hex'), 10),
+        pinHash: input.pin ? await bcrypt.hash(input.pin, 10) : null,
       },
       include,
     });
@@ -96,7 +128,7 @@ export class UsersService {
       action: 'user.create',
       targetType: 'user',
       targetId: user.id,
-      details: { role: user.role, employeeCode: user.employeeCode },
+      details: { role: user.role, employeeCode: user.employeeCode, pinSet: Boolean(input.pin) },
     });
     return toSummary(user);
   }
@@ -112,16 +144,34 @@ export class UsersService {
     if (nextRole === 'worker' && !nextSite) {
       throw new BadRequestException('Workers must be assigned to a site');
     }
+    if (input.pin && nextRole !== 'worker') {
+      throw new BadRequestException('Only workers can have a PIN');
+    }
+    const phone =
+      input.phone !== undefined ? await this.checkPhone(input.phone, id) : existing.phone;
+    // A worker promoted to staff loses the PIN: staff must use their password.
+    const keepsPin = nextRole === 'worker' && Boolean(input.pin || existing.pinHash);
+    if (keepsPin && !phone) {
+      throw new BadRequestException('A phone number is required for PIN login');
+    }
+
+    // Any credential reset or deactivation signs the user out of every device.
+    const revokeSessions = Boolean(input.password || input.pin) || input.isActive === false;
 
     const user = await this.prisma.user.update({
       where: { id },
       data: {
         name: input.name,
         role: input.role,
-        phone: input.phone,
+        phone: input.phone !== undefined ? phone : undefined,
         assignedSiteId: input.assignedSiteId,
         isActive: input.isActive,
         ...(input.password ? { passwordHash: await bcrypt.hash(input.password, 10) } : {}),
+        ...(input.pin
+          ? { pinHash: await bcrypt.hash(input.pin, 10), pinFailedAttempts: 0, pinLockedUntil: null }
+          : {}),
+        ...(!keepsPin && existing.pinHash ? { pinHash: null } : {}),
+        ...(revokeSessions ? { sessionVersion: { increment: 1 } } : {}),
       },
       include,
     });
@@ -131,8 +181,9 @@ export class UsersService {
       targetType: 'user',
       targetId: id,
       details: {
-        fields: Object.keys(input).filter((k) => k !== 'password'),
+        fields: Object.keys(input).filter((k) => k !== 'password' && k !== 'pin'),
         passwordReset: Boolean(input.password),
+        pinReset: Boolean(input.pin),
       },
     });
     return toSummary(user);
@@ -145,7 +196,7 @@ export class UsersService {
     if (existing.id === actorId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, sessionVersion: { increment: 1 } },
       include,
     });
     await this.audit.record({

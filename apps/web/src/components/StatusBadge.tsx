@@ -1,4 +1,5 @@
 import type { RecordStatus } from '@ams/shared';
+import { useI18n } from '../lib/i18n';
 
 export function StatusBadge({
   status,
@@ -30,5 +31,16 @@ export function FlagReasons({ reasons }: { reasons: string[] }) {
         <li key={r}>{REASON_LABELS[r] ?? r}</li>
       ))}
     </ul>
+  );
+}
+
+/** Worker-facing status: a coloured icon with a short label, no technical reasons. */
+export function StatusIcon({ status }: { status: RecordStatus }) {
+  const { t } = useI18n();
+  return (
+    <span className={`status-icon ${status === 'ok' ? 'is-ok' : 'is-flagged'}`}>
+      <span aria-hidden="true">{status === 'ok' ? '✅' : '⚠️'}</span>{' '}
+      {status === 'ok' ? t('status.ok') : t('status.flagged')}
+    </span>
   );
 }

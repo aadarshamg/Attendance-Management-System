@@ -1,3 +1,20 @@
+export type DeviceErrorKind =
+  | 'camera_denied'
+  | 'camera_missing'
+  | 'camera_busy'
+  | 'location_denied'
+  | 'location_weak';
+
+/** A camera/GPS failure tagged with what went wrong, so the UI can tell the worker how to fix it. */
+export class DeviceError extends Error {
+  constructor(
+    readonly kind: DeviceErrorKind,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export interface CameraHandle {
   stream: MediaStream;
   stop: () => void;
@@ -6,12 +23,24 @@ export interface CameraHandle {
 /** Live camera only — there is no file-input fallback, so a gallery photo cannot be submitted. */
 export async function startCamera(facingMode: 'user' | 'environment' = 'user'): Promise<CameraHandle> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('This device/browser does not support camera capture.');
+    throw new DeviceError('camera_missing', 'This device/browser does not support camera capture.');
   }
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-    audio: false,
-  });
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false,
+    });
+  } catch (e) {
+    const name = (e as DOMException).name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      throw new DeviceError('camera_denied', 'Camera permission denied.');
+    }
+    if (name === 'NotReadableError' || name === 'AbortError') {
+      throw new DeviceError('camera_busy', 'Camera is in use by another app.');
+    }
+    throw new DeviceError('camera_missing', (e as Error).message || 'No camera found.');
+  }
   return {
     stream,
     stop: () => stream.getTracks().forEach((t) => t.stop()),
@@ -27,7 +56,7 @@ export interface GpsFix {
 
 export async function getGpsFix(): Promise<GpsFix> {
   if (!navigator.geolocation) {
-    throw new Error('This device/browser does not provide location.');
+    throw new DeviceError('location_denied', 'This device/browser does not provide location.');
   }
   return new Promise<GpsFix>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
@@ -38,7 +67,13 @@ export async function getGpsFix(): Promise<GpsFix> {
           accuracyM: pos.coords.accuracy,
           timestamp: pos.timestamp,
         }),
-      (err) => reject(new Error(geolocationMessage(err))),
+      (err) =>
+        reject(
+          new DeviceError(
+            err.code === err.PERMISSION_DENIED ? 'location_denied' : 'location_weak',
+            geolocationMessage(err),
+          ),
+        ),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   });

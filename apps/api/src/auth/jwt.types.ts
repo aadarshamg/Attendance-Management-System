@@ -6,6 +6,8 @@ export interface JwtPayload {
   assignedSiteId: string | null;
   name: string;
   employeeCode: string;
+  /** users.session_version at sign-in; a reset or deactivation bumps it and revokes the token. */
+  sv: number;
 }
 
 /** Shape attached to `request.user` after JwtStrategy validates a token. */

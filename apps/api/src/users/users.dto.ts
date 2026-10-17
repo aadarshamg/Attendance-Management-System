@@ -3,10 +3,11 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import type { Role } from '@ams/shared';
+import { PIN_PATTERN, type Role } from '@ams/shared';
 
 const ROLES = ['worker', 'supervisor', 'admin'] as const;
 
@@ -16,7 +17,8 @@ export class UserCreateDto {
   @IsString() @MinLength(1) @MaxLength(64) employeeCode!: string;
   @IsOptional() @IsString() @MaxLength(32) phone?: string;
   @IsOptional() @IsString() assignedSiteId?: string | null;
-  @IsString() @MinLength(8) @MaxLength(256) password!: string;
+  @IsOptional() @IsString() @MinLength(8) @MaxLength(256) password?: string;
+  @IsOptional() @IsString() @Matches(PIN_PATTERN) pin?: string;
 }
 
 export class UserUpdateDto {
@@ -26,4 +28,5 @@ export class UserUpdateDto {
   @IsOptional() @IsString() assignedSiteId?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsString() @MinLength(8) @MaxLength(256) password?: string;
+  @IsOptional() @IsString() @Matches(PIN_PATTERN) pin?: string;
 }

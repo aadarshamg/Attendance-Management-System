@@ -54,34 +54,41 @@ enum ImageStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  role         Role     @default(worker)
-  phone        String?
-  employeeCode String   @unique @map("employee_code")
-  passwordHash String   @map("password_hash")
-  assignedSite Site?    @relation(fields: [assignedSiteId], references: [id])
-  assignedSiteId String? @map("assigned_site_id")
-  isActive     Boolean  @default(true) @map("is_active")
-  consentedAt  DateTime? @map("consented_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                String    @id @default(cuid())
+  name              String
+  role              Role      @default(worker)
+  phone             String?
+  employeeCode      String    @unique @map("employee_code")
+  passwordHash      String    @map("password_hash")
+  /// Workers only: bcrypt hash of a 4-digit PIN used with `phone` for the simple login.
+  pinHash           String?   @map("pin_hash")
+  pinFailedAttempts Int       @default(0) @map("pin_failed_attempts")
+  pinLockedUntil    DateTime? @map("pin_locked_until")
+  /// Bumped on a PIN/password reset or deactivation; tokens carrying an older value are rejected.
+  sessionVersion    Int       @default(0) @map("session_version")
+  assignedSite      Site?     @relation(fields: [assignedSiteId], references: [id])
+  assignedSiteId    String?   @map("assigned_site_id")
+  isActive          Boolean   @default(true) @map("is_active")
+  consentedAt       DateTime? @map("consented_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   attendanceRecords AttendanceRecord[] @relation("WorkerRecords")
   reviewedRecords   AttendanceRecord[] @relation("ReviewedBy")
   auditLogs         AuditLog[]
 
+  @@index([phone])
   @@map("users")
   @@schema("attendance")
 }
 
 model Site {
-  id                 String  @id @default(cuid())
-  name               String
-  address            String
-  geofenceCenterLat  Float   @map("geofence_center_lat")
-  geofenceCenterLng  Float   @map("geofence_center_lng")
-  geofenceRadiusM    Int     @map("geofence_radius_m")
-  isActive           Boolean @default(true) @map("is_active")
+  id                String  @id @default(cuid())
+  name              String
+  address           String
+  geofenceCenterLat Float   @map("geofence_center_lat")
+  geofenceCenterLng Float   @map("geofence_center_lng")
+  geofenceRadiusM   Int     @map("geofence_radius_m")
+  isActive          Boolean @default(true) @map("is_active")
 
   users             User[]
   attendanceRecords AttendanceRecord[]
